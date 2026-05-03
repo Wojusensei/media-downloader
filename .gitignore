@@ -1,0 +1,5 @@
+downloads/
+__pycache__/
+*.pyc
+*.class
+node_modules/
