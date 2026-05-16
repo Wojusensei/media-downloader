@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bilibili 下载器 v2.0</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#F4F5F7;color:#222;min-height:100vh;display:flex;justify-content:center;padding:40px 20px}
+.container{max-width:720px;width:100%}
+.header{text-align:center;margin-bottom:24px}
+.header h1{font-size:24px;color:#222;margin-bottom:4px}
+.header p{font-size:13px;color:#9499A0}
+.card{background:#fff;border-radius:10px;padding:20px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+.card-title{font-size:14px;font-weight:600;color:#222;margin-bottom:12px}
+input[type="text"]{width:100%;padding:10px 14px;border:1px solid #E3E5E8;border-radius:8px;font-size:14px;outline:none;background:#FAFBFC;color:#222}
+input[type="text"]:focus{border-color:#FB7299}
+.row{display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s}
+.btn-paste{background:#E7E9EB;color:#222}
+.btn-paste:hover{background:#D3D6DA}
+.btn-primary{background:#FB7299;color:#fff;width:100%;padding:14px;font-size:16px}
+.btn-primary:hover{background:#FC8BAB}
+.btn-primary:disabled{background:#E7E9EB;color:#9499A0;cursor:not-allowed}
+.btn-browse{background:#E7E9EB;color:#222;padding:10px 16px}
+.btn-browse:hover{background:#D3D6DA}
+.checkbox-group{display:flex;gap:20px;flex-wrap:wrap}
+.checkbox-group label{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;color:#222}
+select{width:100%;padding:10px 14px;border:1px solid #E3E5E8;border-radius:8px;font-size:14px;outline:none;background:#fff;color:#222;cursor:pointer}
+select:focus{border-color:#FB7299}
+.progress-bar{width:100%;height:8px;background:#E3E5E8;border-radius:4px;overflow:hidden;margin-top:10px}
+.progress-fill{height:100%;background:#00A1D6;border-radius:4px;transition:width 0.3s;width:0%}
+.progress-text{font-size:12px;color:#9499A0;margin-top:6px}
+.info-preview{display:flex;gap:14px;align-items:center}
+.info-preview img{width:120px;height:75px;border-radius:6px;object-fit:cover;background:#E3E5E8}
+.info-preview .info-text{flex:1}
+.info-preview .info-text .title{font-size:14px;font-weight:600;color:#222;margin-bottom:4px}
+.info-preview .info-text .meta{font-size:12px;color:#9499A0}
+.history-list{max-height:200px;overflow-y:auto}
+.history-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F4F5F7;font-size:13px}
+.history-item:last-child{border-bottom:none}
+.history-item .h-title{color:#222;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:10px}
+.history-item .h-time{color:#9499A0;white-space:nowrap;margin-right:10px}
+.history-item .h-delete{color:#FB7299;cursor:pointer;font-size:16px}
+.history-item .h-delete:hover{color:#FC8BAB}
+.status{text-align:center;font-size:13px;color:#9499A0;margin-top:12px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>🎬 Bilibili 下载器 v2.0</h1>
+<p>粘贴链接 · 选择内容 · 开始下载</p>
+</div>
+
+<div class="card">
+<div class="card-title">📎 视频链接</div>
+<div class="row">
+<input type="text" id="urlInput" placeholder="在这里粘贴 B站视频链接...">
+<button class="btn btn-paste" onclick="pasteAndFetch()">粘贴</button>
+</div>
+</div>
+
+<div class="card hidden" id="infoCard">
+<div class="card-title">📺 视频信息</div>
+<div class="info-preview">
+<img id="coverImg" src="" alt="封面" referrerpolicy="no-referrer">
+<div class="info-text">
+<div class="title" id="infoTitle"></div>
+<div class="meta" id="infoMeta"></div>
+</div>
+</div>
+</div>
+
+<div class="card hidden" id="previewCard">
+<div class="card-title">🎥 视频预览</div>
+<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:6px">
+<iframe id="previewFrame" src="" style="position:absolute;top:0;left:0;width:100%;height:100%" frameborder="0" allowfullscreen="true" scrolling="no"></iframe>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">📥 下载内容</div>
+<div class="checkbox-group">
+<label><input type="checkbox" id="chkVideo" checked> 视频 (.mp4)</label>
+<label><input type="checkbox" id="chkAudio" checked> 音频 (.mp3)</label>
+<label><input type="checkbox" id="chkCover" checked> 封面 (.jpg)</label>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">🎯 清晰度</div>
+<select id="qualitySelect"><option value="127">加载中...</option></select>
+</div>
+
+<div class="card">
+<div class="card-title">📁 保存路径</div>
+<div class="row">
+<input type="text" id="pathInput" placeholder="默认: downloads 文件夹">
+<button class="btn btn-browse" onclick="selectFolder()">浏览</button>
+</div>
+</div>
+
+<button class="btn btn-primary" id="downloadBtn" onclick="startDownload()">开始下载 一w一</button>
+
+<div class="card hidden" id="progressCard">
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+<div class="progress-text" id="progressText"></div>
+</div>
+
+<div class="status" id="statusText">就绪</div>
+
+<div class="card">
+<div class="card-title">📋 下载历史</div>
+<div class="history-list" id="historyList"><span style="color:#9499A0">暂无记录</span></div>
+</div>
+</div>
+
+<script>
+let currentBV="", currentCID=0, currentTitle="";
+
+document.getElementById('urlInput').addEventListener('keydown', function(e){
+    if(e.key==='Enter') fetchInfo();
+});
+
+function pasteAndFetch(){
+    navigator.clipboard.readText().then(t=>{
+        document.getElementById('urlInput').value=t;
+        fetchInfo();
+    }).catch(()=>fetchInfo());
+}
+
+function fetchInfo(){
+    let url=document.getElementById('urlInput').value.trim();
+    if(!url) return;
+    setStatus("正在获取视频信息...");
+    fetch('/api/info?url='+encodeURIComponent(url))
+    .then(r=>r.json()).then(d=>{
+        if(!d.ok){ setStatus("获取失败: "+d.error); return; }
+        currentBV=d.bv; currentCID=d.cid; currentTitle=d.title;
+        document.getElementById('infoCard').classList.remove('hidden');
+        document.getElementById('coverImg').src=d.cover;
+        document.getElementById('infoTitle').textContent=d.title;
+        document.getElementById('infoMeta').textContent='UP主: '+d.owner+' | 时长: '+formatDuration(d.duration);
+        loadQualities();
+        document.getElementById('previewCard').classList.remove('hidden');
+        document.getElementById('previewFrame').src=
+            'https://player.bilibili.com/player.html?bvid='+d.bv+'&page=1&high_quality=1&danmaku=0';
+        setStatus("就绪");
+    }).catch(e=>setStatus("网络错误"));
+}
+
+function loadQualities(){
+    fetch('/api/qualities?bv='+currentBV+'&cid='+currentCID)
+    .then(r=>r.json()).then(d=>{
+        if(!d.ok) return;
+        let sel=document.getElementById('qualitySelect');
+        sel.innerHTML='';
+        d.qualities.forEach(q=>{
+            let o=document.createElement('option');
+            o.value=q.qn; o.textContent=q.desc;
+            if(q.qn===127) o.selected=true;
+            sel.appendChild(o);
+        });
+    });
+}
+
+function selectFolder(){
+    fetch('/api/select-folder',{method:'POST'})
+    .then(r=>r.json()).then(d=>{
+        if(d.ok) document.getElementById('pathInput').value=d.folder;
+    });
+}
+
+function startDownload(){
+    if(!currentBV){ alert('请先粘贴有效的B站视频链接'); return; }
+    let types=[];
+    if(document.getElementById('chkVideo').checked) types.push('video');
+    if(document.getElementById('chkAudio').checked) types.push('audio');
+    if(document.getElementById('chkCover').checked) types.push('cover');
+    if(types.length===0){ alert('请至少选择一项下载内容'); return; }
+    let qn=parseInt(document.getElementById('qualitySelect').value)||127;
+    let savePath=document.getElementById('pathInput').value.trim()||'';
+    let btn=document.getElementById('downloadBtn');
+    btn.disabled=true; btn.textContent='下载中...';
+    document.getElementById('progressCard').classList.remove('hidden');
+    setStatus("正在下载...");
+    fetch('/api/download',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url:document.getElementById('urlInput').value.trim(), qn:qn, types:types, save_path:savePath})
+    }).then(r=>r.json()).then(d=>{
+        if(d.ok){
+            document.getElementById('progressFill').style.width='100%';
+            document.getElementById('progressText').textContent='下载完成 DA☆ZE';
+            setStatus("完成 DA☆ZE");
+            alert('下载完成！\n文件夹: '+d.folder);
+        }else{
+            setStatus("下载失败: "+d.error);
+        }
+        btn.disabled=false; btn.textContent='开始下载 一w一';
+        loadHistory();
+    }).catch(e=>{
+        setStatus("网络错误");
+        btn.disabled=false; btn.textContent='开始下载 一w一';
+    });
+}
+
+function loadHistory(){
+    fetch('/api/history').then(r=>r.json()).then(d=>{
+        if(!d.ok) return;
+        let hl=document.getElementById('historyList');
+        if(d.history.length===0){ hl.innerHTML='<span style="color:#9499A0">暂无记录</span>'; return; }
+        hl.innerHTML=d.history.map((h,i)=>`<div class="history-item"><span class="h-title" title="${h.title}">${h.bv} ${h.title}</span><span class="h-time">${h.time}</span><span class="h-delete" onclick="deleteHistory(${i})">×</span></div>`).join('');
+    });
+}
+
+function deleteHistory(index){
+    fetch('/api/history/delete?index='+index).then(r=>r.json()).then(d=>{ if(d.ok) loadHistory(); });
+}
+
+function setStatus(msg){ document.getElementById('statusText').textContent=msg; }
+
+function formatDuration(sec){ let m=Math.floor(sec/60),s=sec%60; return m+':'+(s<10?'0'+s:s); }
+
+loadHistory();
+</script>
+</body>
+</html>
