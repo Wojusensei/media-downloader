@@ -1,6 +1,6 @@
 # Media Downloader
 
-[![下载](https://img.shields.io/badge/⬇️%20下载-Windows%20v2.1-FB7299?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Wojusensei/media-downloader/releases/tag/v2.1)
+[![下载](https://img.shields.io/badge/⬇️%20下载-Windows%20v3.2-FB7299?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Wojusensei/media-downloader/releases/tag/v3.2)
 
 多语言爬虫工具史山代码集合包，可以输入 Bilibili 视频链接自动下载视频、音频和封面
 
