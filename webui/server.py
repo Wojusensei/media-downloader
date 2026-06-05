@@ -1,18 +1,24 @@
+import requests
 import http.server
 import json
 import urllib.parse
 import os
-import threading
+import sys
 import webbrowser
+import traceback
 
 from downloader import (
     extract_bv, get_video_info, get_available_qualities,
     get_download_urls, download_file, safe_name,
-    load_history, save_history
+    load_history, save_history, try_login_with_browser
 )
 
 PORT = 8765
-ROOT = os.path.dirname(os.path.abspath(__file__))
+
+if getattr(sys, 'frozen', False):
+    ROOT = sys._MEIPASS
+else:
+    ROOT = os.path.dirname(os.path.abspath(__file__))
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -27,10 +33,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.handle_info(params)
         elif path == "/api/qualities":
             self.handle_qualities(params)
-        elif path == "/api/download":
-            self.handle_download(params)
-        elif path == "/api/progress":
-            self.handle_progress(params)
         elif path == "/api/history":
             self.handle_get_history()
         elif path == "/api/history/delete":
@@ -57,15 +59,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def handle_info(self, params):
         url = params.get("url", [""])[0]
+        if not url:
+            self.send_json({"ok": False, "error": "请提供视频链接"})
+            return
+
         bv = extract_bv(url)
         if not bv:
-            self.send_json({"ok": False, "error": "无法识别B站链接"})
+            self.send_json({"ok": False, "error": f"无法识别链接中的BV号: {url}"})
             return
         try:
+            # 尝试自动登录，但不强制要求成功
+            try_login_with_browser()
             info = get_video_info(bv)
             self.send_json({"ok": True, "bv": bv, **info})
         except Exception as e:
-            self.send_json({"ok": False, "error": str(e)})
+            print(f"[ERROR] get_video_info failed: {e}")
+            traceback.print_exc()
+            self.send_json({"ok": False, "error": f"获取视频信息失败: {e}"})
 
     def handle_qualities(self, params):
         bv = params.get("bv", [""])[0]
@@ -79,9 +89,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_json({"ok": False, "error": str(e)})
 
-    def handle_download(self, params):
-        self.send_json({"ok": False, "error": "请使用 POST 方法"})
-
     def handle_download_post(self, data):
         url = data.get("url", "")
         qn = data.get("qn", 127)
@@ -90,10 +97,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         bv = extract_bv(url)
         if not bv:
-            self.send_json({"ok": False, "error": "无法识别B站链接"})
+            self.send_json({"ok": False, "error": f"无法识别链接中的BV号: {url}"})
             return
 
         try:
+            # 尝试自动登录，但不强制要求成功
+            try_login_with_browser()
             info = get_video_info(bv)
             title = info["title"]
             cid = info["cid"]
@@ -111,11 +120,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
             if "video" in types or "audio" in types:
                 vurl, aurl = get_download_urls(bv, cid, qn)
+                # 判断是否是传统流（音视频合一）
+                is_legacy = (vurl == aurl)
+
                 if "video" in types:
-                    video_path = os.path.join(folder, "video_only.mp4")
+                    video_path = os.path.join(folder, "video_only.mp4" if not is_legacy else "video.mp4")
                     download_file(vurl, video_path)
                     results.append("video")
-                if "audio" in types:
+                if "audio" in types and not is_legacy:
                     audio_path = os.path.join(folder, "audio_only.mp3")
                     download_file(aurl, audio_path)
                     results.append("audio")
@@ -130,10 +142,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
             self.send_json({"ok": True, "results": results, "folder": folder, "title": title})
         except Exception as e:
+            print(f"[ERROR] download failed: {e}")
+            traceback.print_exc()
             self.send_json({"ok": False, "error": str(e)})
-
-    def handle_progress(self, params):
-        self.send_json({"ok": True, "progress": 0})
 
     def handle_get_history(self):
         history = load_history()
