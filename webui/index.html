@@ -5,194 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bilibili 下载器 v3.2</title>
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-body {
-    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-    background: linear-gradient(135deg, #f6f7fb 0%, #eef0f7 100%);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    padding: 30px 15px;
-}
-.container {
-    max-width: 700px;
-    width: 100%;
-}
-.header {
-    text-align: center;
-    margin-bottom: 25px;
-}
-.logo {
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, #FB7299, #FF8EB3);
-    border-radius: 18px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-    color: white;
-    box-shadow: 0 4px 15px rgba(251, 114, 153, 0.3);
-    margin-bottom: 10px;
-}
-h1 {
-    font-size: 26px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #FB7299, #FF6B8A);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-.subtitle {
-    color: #999;
-    font-size: 13px;
-    margin-top: 4px;
-}
-.card {
-    background: white;
-    border-radius: 16px;
-    padding: 18px 20px;
-    margin-bottom: 14px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-    transition: all 0.2s;
-}
-.card:hover {
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-}
-.card-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 12px;
-}
-input[type="text"], select {
-    width: 100%;
-    padding: 11px 14px;
-    border: 1.5px solid #e8e8ea;
-    border-radius: 10px;
-    font-size: 14px;
-    background: #fafbfc;
-    color: #333;
-    outline: none;
-    transition: border 0.2s;
-    font-family: inherit;
-}
-input:focus, select:focus {
-    border-color: #FB7299;
-}
-.btn {
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-.btn-paste {
-    background: #f0f0f2;
-    color: #666;
-}
-.btn-paste:hover {
-    background: #e4e4e6;
-}
-.btn-browse {
-    background: #f0f0f2;
-    color: #666;
-    margin-left: 8px;
-}
-.btn-primary {
-    background: linear-gradient(135deg, #FB7299, #FF6B8A);
-    color: white;
-    width: 100%;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: 700;
-    border-radius: 14px;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 15px rgba(251, 114, 153, 0.3);
-    margin-top: 6px;
-}
-.btn-primary:hover {
-    box-shadow: 0 6px 20px rgba(251, 114, 153, 0.45);
-    transform: translateY(-1px);
-}
-.btn-primary:disabled {
-    background: #e0e0e0;
-    color: #aaa;
-    box-shadow: none;
-    transform: none;
-    cursor: not-allowed;
-}
-.checkbox-group {
-    display: flex;
-    gap: 20px;
-}
-.checkbox-group label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    cursor: pointer;
-}
-.info-preview {
-    display: flex;
-    gap: 14px;
-}
-.info-preview img {
-    width: 110px;
-    height: 68px;
-    border-radius: 8px;
-    object-fit: cover;
-}
-.progress-bar {
-    height: 6px;
-    background: #eee;
-    border-radius: 3px;
-    margin-top: 8px;
-}
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #FB7299, #00A1D6);
-    border-radius: 3px;
-    width: 0%;
-    transition: width 0.3s;
-}
-.history-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #f5f5f5;
-    font-size: 13px;
-}
-.status-bar {
-    text-align: center;
-    color: #999;
-    font-size: 12px;
-    margin-top: 10px;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #f6f7fb 0%, #eef0f7 100%); min-height: 100vh; display: flex; justify-content: center; padding: 30px 15px; }
+.container { max-width: 700px; width: 100%; }
+.header { text-align: center; margin-bottom: 25px; }
+.logo { width: 60px; height: 60px; background: linear-gradient(135deg, #FB7299, #FF8EB3); border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; color: white; box-shadow: 0 4px 15px rgba(251, 114, 153, 0.3); margin-bottom: 10px; }
+h1 { font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #FB7299, #FF6B8A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.subtitle { color: #999; font-size: 13px; margin-top: 4px; }
+.card { background: white; border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+.card-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+input[type="text"], select { width: 100%; padding: 11px 14px; border: 1.5px solid #e8e8ea; border-radius: 10px; font-size: 14px; background: #fafbfc; color: #333; outline: none; transition: border 0.2s; font-family: inherit; }
+input:focus, select:focus { border-color: #FB7299; }
+.btn { padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; }
+.btn-paste { background: #f0f0f2; color: #666; }
+.btn-paste:hover { background: #e4e4e6; }
+.btn-browse { background: #f0f0f2; color: #666; margin-left: 8px; }
+.btn-primary { background: linear-gradient(135deg, #FB7299, #FF6B8A); color: white; width: 100%; padding: 14px; font-size: 16px; font-weight: 700; border-radius: 14px; letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(251, 114, 153, 0.3); margin-top: 6px; }
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(251, 114, 153, 0.45); transform: translateY(-1px); }
+.btn-primary:disabled { background: #e0e0e0; color: #aaa; box-shadow: none; transform: none; cursor: not-allowed; }
+.btn-login { background: #00A1D6; color: white; width: 100%; padding: 12px; font-size: 14px; border-radius: 10px; font-weight: 600; margin-top: 8px; }
+.btn-login:hover { background: #00B5E5; }
+.checkbox-group { display: flex; gap: 20px; }
+.checkbox-group label { display: flex; align-items: center; gap: 5px; font-size: 14px; cursor: pointer; }
+.info-preview { display: flex; gap: 14px; }
+.info-preview img { width: 110px; height: 68px; border-radius: 8px; object-fit: cover; }
+.progress-bar { height: 6px; background: #eee; border-radius: 3px; margin-top: 8px; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #FB7299, #00A1D6); border-radius: 3px; width: 0%; transition: width 0.3s; }
+.status-bar { text-align: center; color: #999; font-size: 12px; margin-top: 10px; }
 .hidden { display: none; }
-.video-preview-container {
-    position: relative;
-    padding-bottom: 56.25%;
-    height: 0;
-    overflow: hidden;
-    border-radius: 10px;
-    margin-top: 8px;
-}
-.video-preview-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-}
+.video-preview-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 10px; margin-top: 8px; }
+.video-preview-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+.partial-warning { background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 10px; margin: 12px 0; font-size: 13px; color: #856404; display: none; }
+.cookie-status { font-size: 12px; margin-top: 6px; color: #666; }
 </style>
 </head>
 <body>
@@ -257,6 +101,27 @@ input:focus, select:focus {
         </div>
     </div>
 
+    <!-- 一键登录卡片 -->
+    <div class="card" id="loginCard">
+        <div class="card-title">🔐 会员权限（下载充电/大会员视频）</div>
+        <p style="font-size:12px; color:#666; margin-bottom:10px;">
+            若自动登录失败，请先关闭所有 Edge/Chrome 浏览器窗口，然后点击下方按钮。
+        </p>
+        <button class="btn btn-login" id="autoLoginBtn" onclick="autoLogin()">一键获取浏览器登录</button>
+        <div id="loginStatus" class="cookie-status"></div>
+        <hr style="margin:12px 0; border: 0.5px solid #eee;">
+        <p style="font-size:12px; color:#666;">高级：手动粘贴 Cookie（<a href="#" onclick="toggleManualCookie();return false;">展开</a>）</p>
+        <div id="manualCookieArea" class="hidden" style="margin-top:8px;">
+            <textarea id="cookieText" rows="2" style="width:100%; padding:8px; border:1px solid #e8e8ea; border-radius:8px; font-size:12px;" placeholder="粘贴从浏览器“网络”请求头中复制的完整 Cookie"></textarea>
+            <button class="btn btn-paste" style="margin-top:6px;" onclick="pasteCookie()">从剪贴板粘贴</button>
+        </div>
+    </div>
+
+    <!-- 下载不完整的警告 -->
+    <div id="partialWarning" class="partial-warning">
+        ⚠️ <span id="partialWarningText"></span>
+    </div>
+
     <!-- 下载按钮 -->
     <button class="btn btn-primary" id="downloadBtn" onclick="startDownload()">开始下载 一w一</button>
 
@@ -270,22 +135,43 @@ input:focus, select:focus {
 </div>
 
 <script>
-let currentBV="", currentCID=0, taskId="";
-let progressTimer=null;
+let currentBV="", currentCID=0, taskId="", progressTimer=null;
 
-// 监听回车
-document.getElementById('urlInput').addEventListener('keydown', e => {
-    if(e.key === 'Enter') fetchInfo();
-});
+document.getElementById('urlInput').addEventListener('keydown', e => { if(e.key === 'Enter') fetchInfo(); });
 
 async function pasteAndFetch() {
+    try { const t = await navigator.clipboard.readText(); document.getElementById('urlInput').value = t; fetchInfo(); } catch { fetchInfo(); }
+}
+
+function toggleManualCookie() {
+    document.getElementById('manualCookieArea').classList.toggle('hidden');
+}
+
+async function autoLogin() {
+    const btn = document.getElementById('autoLoginBtn');
+    btn.disabled = true;
+    btn.textContent = '正在获取...';
+    document.getElementById('loginStatus').textContent = '';
     try {
-        const text = await navigator.clipboard.readText();
-        document.getElementById('urlInput').value = text;
-        fetchInfo();
-    } catch {
-        fetchInfo();
+        const r = await fetch('/api/auto-login');
+        const d = await r.json();
+        if (d.ok) {
+            document.getElementById('loginStatus').textContent = '✅ ' + d.message;
+        } else {
+            document.getElementById('loginStatus').textContent = '❌ ' + d.error;
+        }
+    } catch(e) {
+        document.getElementById('loginStatus').textContent = '❌ 网络错误';
     }
+    btn.disabled = false;
+    btn.textContent = '一键获取浏览器登录';
+}
+
+async function pasteCookie() {
+    try {
+        const t = await navigator.clipboard.readText();
+        document.getElementById('cookieText').value = t;
+    } catch { }
 }
 
 async function fetchInfo() {
@@ -301,12 +187,9 @@ async function fetchInfo() {
     document.getElementById('infoTitle').textContent = d.title;
     document.getElementById('infoMeta').textContent = `UP主: ${d.owner} | ${formatDuration(d.duration)}`;
 
-    // 显示视频预览
     document.getElementById('previewCard').classList.remove('hidden');
-    document.getElementById('previewFrame').src =
-        `https://player.bilibili.com/player.html?bvid=${d.bv}&page=1&high_quality=1&danmaku=0`;
+    document.getElementById('previewFrame').src = `https://player.bilibili.com/player.html?bvid=${d.bv}&page=1&high_quality=1&danmaku=0`;
 
-    // 获取清晰度列表
     loadQualities();
     setStatus("就绪");
 }
@@ -320,8 +203,7 @@ async function loadQualities() {
             sel.innerHTML = '';
             d.qualities.forEach(q => {
                 const opt = document.createElement('option');
-                opt.value = q.qn;
-                opt.textContent = q.desc;
+                opt.value = q.qn; opt.textContent = q.desc;
                 if(q.qn === 127) opt.selected = true;
                 sel.appendChild(opt);
             });
@@ -347,16 +229,18 @@ async function startDownload() {
 
     const qn = parseInt(document.getElementById('qualitySelect').value) || 127;
     const savePath = document.getElementById('pathInput').value.trim();
+    const manualCookie = document.getElementById('cookieText').value.trim();
     const btn = document.getElementById('downloadBtn');
     btn.disabled = true;
     btn.textContent = '下载中...';
     document.getElementById('progressCard').classList.remove('hidden');
+    document.getElementById('partialWarning').style.display = 'none';
     setStatus("正在启动下载...");
 
     const r = await fetch('/api/download', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({url:document.getElementById('urlInput').value.trim(), qn, types, save_path: savePath})
+        body:JSON.stringify({url:document.getElementById('urlInput').value.trim(), qn, types, save_path: savePath, manual_cookie: manualCookie})
     });
     const d = await r.json();
     if(d.ok) {
@@ -382,16 +266,24 @@ function startProgressPolling() {
                 document.getElementById('downloadBtn').disabled = false;
                 document.getElementById('downloadBtn').textContent = '开始下载 一w一';
                 setStatus(`完成！文件夹: ${d.progress.folder}`);
+            } else if(d.progress.status === 'partial') {
+                document.getElementById('progressFill').style.width = '100%';
+                document.getElementById('progressText').textContent = '下载可能不完整';
+                clearInterval(progressTimer);
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('downloadBtn').textContent = '重新下载';
+                document.getElementById('partialWarningText').textContent = d.progress.message || '检测到视频可能不完整，请先使用“一键获取浏览器登录”后重试。';
+                document.getElementById('partialWarning').style.display = 'block';
+                setStatus("下载不完整，请按提示操作");
             } else if(d.progress.status === 'error') {
                 setStatus("下载失败: "+d.progress.error);
                 clearInterval(progressTimer);
                 document.getElementById('downloadBtn').disabled = false;
                 document.getElementById('downloadBtn').textContent = '开始下载 一w一';
             } else {
-                // 取所有类型进度的平均值
                 const values = Object.values(d.progress).filter(v => typeof v === 'number');
                 if(values.length > 0) {
-                    const pct = Math.round(values.reduce((a,b)=>a+b,0) / values.length * 100);
+                    const pct = Math.round(values.reduce((a,b)=>a+b,0)/values.length*100);
                     document.getElementById('progressFill').style.width = pct+'%';
                     document.getElementById('progressText').textContent = pct+'%';
                 }
@@ -400,14 +292,8 @@ function startProgressPolling() {
     }, 500);
 }
 
-function setStatus(msg) {
-    document.getElementById('statusText').textContent = msg;
-}
-function formatDuration(sec) {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s.toString().padStart(2,'0')}`;
-}
+function setStatus(msg) { document.getElementById('statusText').textContent = msg; }
+function formatDuration(sec) { const m = Math.floor(sec/60); const s = sec%60; return `${m}:${s.toString().padStart(2,'0')}`; }
 </script>
 </body>
 </html>

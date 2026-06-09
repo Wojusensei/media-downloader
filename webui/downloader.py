@@ -2,6 +2,10 @@ import requests
 import re
 import os
 import json
+import shutil
+import tempfile
+import sqlite3
+import struct
 from typing import Optional
 
 HEADERS = {
@@ -89,8 +93,7 @@ def get_download_urls(bv, cid, qn=127):
 
     raise Exception(f"获取下载地址失败 (错误码 {data.get('code', '未知')}): {data.get('message', '无详细错误信息')}")
 
-def download_file(url, path, progress_callback=None):
-    """下载文件，支持进度回调"""
+def download_file(url, path, callback=None):
     resp = requests.get(url, headers=HEADERS, stream=True, timeout=60)
     total = int(resp.headers.get('content-length', 0))
     downloaded = 0
@@ -99,10 +102,10 @@ def download_file(url, path, progress_callback=None):
             if chunk:
                 f.write(chunk)
                 downloaded += len(chunk)
-                if progress_callback and total > 0:
-                    progress_callback(downloaded, total)
-    if progress_callback and total == 0:
-        progress_callback(1, 1)  # 文件大小为0时直接显示完成
+                if callback and total > 0:
+                    callback(downloaded, total)
+    if callback and total == 0:
+        callback(1, 1)
 
 def safe_name(s):
     return re.sub(r'[\\/:*?"<>|]', '_', s)
@@ -122,60 +125,62 @@ def save_history(item, path="history.json"):
         json.dump(history, f, ensure_ascii=False, indent=2)
 
 def get_auto_cookie() -> Optional[str]:
-    """
-    从 Edge 和 Chrome 的本地存储中提取 B站 Cookie。
-    使用更稳定的方法：直接读取浏览器加密存储的 Cookies 文件，
-    然后用 Windows DPAPI 解密（仅限 Windows 系统）。
-    如果解密失败，回退到手动解析未加密的 Cookie。
-    """
     import platform
-    import subprocess
-    import tempfile
-    import shutil
-    import sqlite3
+    system = platform.system()
 
-    if platform.system() != "Windows":
-        return None
+    browsers = []
 
-    browsers = [
-        {
-            'name': 'Edge',
-            'paths': [
-                os.path.join(os.getenv('LOCALAPPDATA', ''),
-                             'Microsoft', 'Edge', 'User Data', 'Default', 'Network', 'Cookies'),
-                os.path.join(os.getenv('LOCALAPPDATA', ''),
-                             'Microsoft', 'Edge', 'User Data', 'Profile 1', 'Network', 'Cookies'),
-            ]
-        },
-        {
-            'name': 'Chrome',
-            'paths': [
-                os.path.join(os.getenv('LOCALAPPDATA', ''),
-                             'Google', 'Chrome', 'User Data', 'Default', 'Network', 'Cookies'),
-                os.path.join(os.getenv('LOCALAPPDATA', ''),
-                             'Google', 'Chrome', 'User Data', 'Profile 1', 'Network', 'Cookies'),
-            ]
-        }
-    ]
+    if system == "Windows":
+        edge_base = os.path.join(os.getenv('LOCALAPPDATA', ''),
+                                 'Microsoft', 'Edge', 'User Data')
+        for profile in ['Default', 'Profile 1', 'Profile 2']:
+            path = os.path.join(edge_base, profile, 'Network', 'Cookies')
+            if os.path.exists(path):
+                browsers.append({'name': f'Edge ({profile})', 'cookie_path': path, 'host_key': '.bilibili.com'})
+
+    if system == "Windows":
+        chrome_base = os.path.join(os.getenv('LOCALAPPDATA', ''),
+                                   'Google', 'Chrome', 'User Data')
+        for profile in ['Default', 'Profile 1', 'Profile 2']:
+            path = os.path.join(chrome_base, profile, 'Network', 'Cookies')
+            if os.path.exists(path):
+                browsers.append({'name': f'Chrome ({profile})', 'cookie_path': path, 'host_key': '.bilibili.com'})
+
+    if system == "Windows":
+        firefox_base = os.path.join(os.getenv('APPDATA', ''), 'Mozilla', 'Firefox', 'Profiles')
+    elif system == "Darwin":
+        firefox_base = os.path.expanduser('~/Library/Application Support/Firefox/Profiles')
+    else:
+        firefox_base = os.path.expanduser('~/.mozilla/firefox')
+
+    if os.path.exists(firefox_base):
+        for profile in os.listdir(firefox_base):
+            if profile.endswith('.default-release') or profile.endswith('.default'):
+                path = os.path.join(firefox_base, profile, 'cookies.sqlite')
+                if os.path.exists(path):
+                    browsers.append({'name': f'Firefox ({profile})', 'cookie_path': path, 'host_key': 'bilibili.com'})
 
     for browser in browsers:
-        for cookie_path in browser['paths']:
-            if not os.path.exists(cookie_path):
-                continue
-            try:
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    dest = os.path.join(tmpdir, 'cookies.db')
-                    shutil.copy2(cookie_path, dest)
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                dest = os.path.join(tmpdir, 'cookies.db')
+                shutil.copy2(browser['cookie_path'], dest)
 
-                    conn = sqlite3.connect(f'file:{dest}?immutable=1', uri=True)
-                    cursor = conn.cursor()
+                conn = sqlite3.connect(f'file:{dest}?immutable=1', uri=True)
+                cursor = conn.cursor()
 
-                    # 查询所有必要的 Cookie
-                    cookies = {}
+                cookies = {}
+                if 'Firefox' in browser['name']:
+                    cursor.execute(
+                        "SELECT name, value FROM moz_cookies WHERE host LIKE '%bilibili.com' AND name IN ('SESSDATA', 'bili_jct', 'DedeUserID', 'buvid3')"
+                    )
+                    for name, value in cursor.fetchall():
+                        cookies[name] = value
+                else:
                     for name in ['SESSDATA', 'bili_jct', 'DedeUserID', 'buvid3']:
                         cursor.execute(
-                            "SELECT value, encrypted_value FROM cookies WHERE host_key LIKE '%bilibili.com' AND name = ?",
-                            (name,)
+                            "SELECT value, encrypted_value FROM cookies WHERE host_key = ? AND name = ?",
+                            (browser['host_key'], name)
                         )
                         row = cursor.fetchone()
                         if row:
@@ -183,7 +188,6 @@ def get_auto_cookie() -> Optional[str]:
                             if value:
                                 cookies[name] = value
                             elif encrypted:
-                                # 尝试用 Windows DPAPI 解密
                                 try:
                                     import win32crypt
                                     decrypted = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
@@ -191,14 +195,17 @@ def get_auto_cookie() -> Optional[str]:
                                 except:
                                     pass
 
-                    conn.close()
+                conn.close()
 
-                    if 'SESSDATA' in cookies:
-                        cookie_parts = [f"{k}={v}" for k, v in cookies.items()]
-                        return '; '.join(cookie_parts)
-            except Exception as e:
-                print(f"[DEBUG] Cookie extraction error for {browser['name']}: {e}")
-                continue
+                if 'SESSDATA' in cookies:
+                    parts = [f"{k}={v}" for k, v in cookies.items()]
+                    full_cookie = '; '.join(parts)
+                    print(f"[DEBUG] 成功从 {browser['name']} 提取到 Cookie")
+                    return full_cookie
+
+        except Exception as e:
+            print(f"[DEBUG] 从 {browser['name']} 提取 Cookie 失败: {e}")
+            continue
 
     return None
 
@@ -206,5 +213,40 @@ def try_login_with_browser() -> bool:
     auto_cookie = get_auto_cookie()
     if auto_cookie:
         set_cookie(auto_cookie)
+        print("[INFO] 已自动应用浏览器 Cookie")
         return True
+    print("[INFO] 未找到浏览器登录信息，将以游客模式下载")
     return False
+
+def get_mp4_duration(filepath: str) -> Optional[float]:
+    try:
+        with open(filepath, 'rb') as f:
+            data = f.read(1024 * 1024)
+            moov_idx = data.find(b'moov')
+            if moov_idx == -1:
+                f.seek(0, os.SEEK_END)
+                fsize = f.tell()
+                f.seek(max(0, fsize - 1024 * 1024))
+                data = f.read(1024 * 1024)
+                moov_idx = data.find(b'moov')
+                if moov_idx == -1:
+                    return None
+            mvhd_idx = data.find(b'mvhd', moov_idx, moov_idx + 1024)
+            if mvhd_idx == -1:
+                return None
+            mvhd_start = mvhd_idx + 8
+            version = data[mvhd_start]
+            if version == 0:
+                timescale = struct.unpack_from('>I', data, mvhd_start + 1 + 3 + 4 + 4)[0]
+                duration = struct.unpack_from('>I', data, mvhd_start + 1 + 3 + 4 + 4 + 4)[0]
+            elif version == 1:
+                timescale = struct.unpack_from('>I', data, mvhd_start + 1 + 3 + 8 + 8)[0]
+                duration = struct.unpack_from('>Q', data, mvhd_start + 1 + 3 + 8 + 8 + 4)[0]
+            else:
+                return None
+            if timescale == 0:
+                return None
+            return duration / timescale
+    except Exception as e:
+        print(f"[DEBUG] 解析视频时长失败: {e}")
+        return None

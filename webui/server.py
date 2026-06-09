@@ -11,7 +11,8 @@ import threading
 from downloader import (
     extract_bv, get_video_info, get_available_qualities,
     get_download_urls, download_file, safe_name,
-    load_history, save_history, try_login_with_browser
+    load_history, save_history, try_login_with_browser, set_cookie,
+    get_auto_cookie, get_mp4_duration
 )
 
 PORT = 8765
@@ -21,7 +22,6 @@ if getattr(sys, 'frozen', False):
 else:
     ROOT = os.path.dirname(os.path.abspath(__file__))
 
-# 存储下载进度
 download_progress = {}
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -43,6 +43,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.handle_delete_history(params)
         elif path == "/api/progress":
             self.handle_progress(params)
+        elif path == "/api/auto-login":
+            self.handle_auto_login()
         elif path == "/" or path == "":
             self.path = "/index.html"
             super().do_GET()
@@ -63,6 +65,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    def handle_auto_login(self):
+        cookie = get_auto_cookie()
+        if cookie:
+            set_cookie(cookie)
+            self.send_json({"ok": True, "message": "已成功获取浏览器登录信息"})
+        else:
+            self.send_json({"ok": False, "error": "未能自动获取，请确保浏览器中已登录B站，并暂时关闭浏览器后重试"})
+
     def handle_info(self, params):
         url = params.get("url", [""])[0]
         if not url:
@@ -74,8 +84,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json({"ok": False, "error": f"无法识别链接中的BV号: {url}"})
             return
         try:
-            logged_in = try_login_with_browser()
-            print(f"[INFO] Browser login: {logged_in}")
+            if not try_login_with_browser():
+                print("[INFO] 自动提取 Cookie 失败，尝试手动 Cookie（如果有）")
             info = get_video_info(bv)
             self.send_json({"ok": True, "bv": bv, **info})
         except Exception as e:
@@ -107,75 +117,103 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         qn = data.get("qn", 127)
         types = data.get("types", ["video", "audio", "cover"])
         save_path = data.get("save_path", os.path.join(os.getcwd(), "downloads"))
+        manual_cookie = data.get("manual_cookie", "")
 
         bv = extract_bv(url)
         if not bv:
             self.send_json({"ok": False, "error": f"无法识别链接中的BV号: {url}"})
             return
 
-        # 生成任务ID
-        task_id = f"{bv}_{__import__('time').time()}"
+        task_id = f"{bv}_{int(__import__('time').time())}"
 
         def do_download():
             try:
-                logged_in = try_login_with_browser()
-                print(f"[INFO] Browser login: {logged_in}")
+                auto_success = try_login_with_browser()
+                if not auto_success and manual_cookie:
+                    print("[INFO] 使用手动输入的 Cookie")
+                    set_cookie(manual_cookie)
+                    auto_success = True  # 手动输入视为已登录
+                elif not auto_success:
+                    print("[INFO] 未获取到任何登录信息，以游客模式下载")
 
                 info = get_video_info(bv)
                 title = info["title"]
                 cid = info["cid"]
                 cover = info["cover"]
+                original_duration = info["duration"]
 
                 folder = os.path.join(save_path, f"{bv}_{safe_name(title)}")
                 os.makedirs(folder, exist_ok=True)
 
                 results = []
 
-                # 封面下载
                 if "cover" in types:
                     cover_path = os.path.join(folder, "cover.jpg")
-                    download_file(cover, cover_path,
-                                  lambda done, total: download_progress.update({task_id: {"cover": done/total}}))
+                    download_file(cover, cover_path, lambda d,t: download_progress.update({task_id: {"cover": d/t}}))
                     results.append("cover")
 
-                # 视频/音频下载
+                video_downloaded = False
+                video_path = ""
+
                 if "video" in types or "audio" in types:
                     vurl, aurl, is_legacy = get_download_urls(bv, cid, qn)
 
                     if "video" in types:
                         video_name = "video_full.mp4" if is_legacy else "video_only.mp4"
                         video_path = os.path.join(folder, video_name)
-                        download_file(vurl, video_path,
-                                      lambda done, total: download_progress.update({task_id: {"video": done/total}}))
+                        download_file(vurl, video_path, lambda d,t: download_progress.update({task_id: {"video": d/t}}))
                         results.append("video")
+                        video_downloaded = True
 
                     if "audio" in types:
                         if not is_legacy:
                             audio_path = os.path.join(folder, "audio_only.mp3")
-                            download_file(aurl, audio_path,
-                                          lambda done, total: download_progress.update({task_id: {"audio": done/total}}))
+                            download_file(aurl, audio_path, lambda d,t: download_progress.update({task_id: {"audio": d/t}}))
                             results.append("audio")
                         else:
                             results.append("audio (included in video)")
 
-                history_item = {
-                    "bv": bv,
-                    "title": title,
-                    "time": __import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "folder": folder
-                }
-                save_history(history_item)
+                if video_downloaded and original_duration > 60:
+                    actual_duration = get_mp4_duration(video_path)
+                    if actual_duration is not None:
+                        print(f"[INFO] 原视频时长: {original_duration}s, 下载后时长: {actual_duration}s")
+                        if actual_duration < original_duration * 0.9:
+                            # 判断是否已登录
+                            if auto_success:
+                                message = "您的B站账号可能没有购买该视频或开通大会员，无法下载完整视频。"
+                            else:
+                                message = "视频不完整！请先关闭浏览器，点击“一键获取浏览器登录”后再试。"
+                            download_progress[task_id] = {
+                                "status": "partial",
+                                "folder": folder,
+                                "title": title,
+                                "message": message
+                            }
+                            return
+                    else:
+                        file_size_mb = os.path.getsize(video_path) / (1024 * 1024)
+                        if file_size_mb < 50:
+                            if auto_success:
+                                message = "您的B站账号可能没有购买该视频或开通大会员，无法下载完整视频。"
+                            else:
+                                message = "视频可能不完整。请先关闭浏览器，点击“一键获取浏览器登录”后再试。"
+                            download_progress[task_id] = {
+                                "status": "partial",
+                                "folder": folder,
+                                "title": title,
+                                "message": message
+                            }
+                            return
 
+                history_item = {"bv": bv, "title": title, "time": __import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "folder": folder}
+                save_history(history_item)
                 download_progress[task_id] = {"status": "complete", "folder": folder, "title": title}
             except Exception as e:
                 print(f"[ERROR] download failed: {e}")
                 traceback.print_exc()
                 download_progress[task_id] = {"status": "error", "error": str(e)}
 
-        # 异步执行下载
-        thread = threading.Thread(target=do_download, daemon=True)
-        thread.start()
-
+        threading.Thread(target=do_download, daemon=True).start()
         self.send_json({"ok": True, "task_id": task_id, "message": "下载任务已启动"})
 
     def handle_get_history(self):
