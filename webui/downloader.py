@@ -2,9 +2,6 @@ import requests
 import re
 import os
 import json
-import shutil
-import tempfile
-import sqlite3
 from typing import Optional
 
 HEADERS = {
@@ -68,32 +65,32 @@ def get_available_qualities(bv, cid):
     return qualities
 
 def get_download_urls(bv, cid, qn=127):
-    # 首先尝试 DASH 流
+    # 尝试 DASH 流
     api = "https://api.bilibili.com/x/player/playurl"
     params = {"bvid": bv, "cid": cid, "qn": qn, "fnval": 16}
     r = requests.get(api, params=params, headers=HEADERS, timeout=30)
     data = r.json()
     if data["code"] == 0:
         dash = data["data"].get("dash")
-        if dash:
+        if dash and dash.get("video") and dash.get("audio"):
             video_url = dash["video"][0]["baseUrl"]
             audio_url = dash["audio"][0]["baseUrl"]
-            return video_url, audio_url
+            return video_url, audio_url, False
 
-    # DASH 流失败，尝试传统单文件流（mp4/flv）
-    params["fnval"] = 1  # 普通视频流
+    # 回退传统流
+    params["fnval"] = 1
     r = requests.get(api, params=params, headers=HEADERS, timeout=30)
     data = r.json()
     if data["code"] == 0:
         durl = data["data"].get("durl")
         if durl and len(durl) > 0:
             video_url = durl[0]["url"]
-            # 传统流音视频合一，但为了兼容我们返回同样的视频链接作为音频链接，上层调用会判断
-            return video_url, video_url  # 音频链接同样返回视频链接，实际下载音频时会被跳过
+            return video_url, video_url, True
 
     raise Exception(f"获取下载地址失败 (错误码 {data.get('code', '未知')}): {data.get('message', '无详细错误信息')}")
 
-def download_file(url, path, callback=None):
+def download_file(url, path, progress_callback=None):
+    """下载文件，支持进度回调"""
     resp = requests.get(url, headers=HEADERS, stream=True, timeout=60)
     total = int(resp.headers.get('content-length', 0))
     downloaded = 0
@@ -102,8 +99,10 @@ def download_file(url, path, callback=None):
             if chunk:
                 f.write(chunk)
                 downloaded += len(chunk)
-                if callback and total > 0:
-                    callback(downloaded, total)
+                if progress_callback and total > 0:
+                    progress_callback(downloaded, total)
+    if progress_callback and total == 0:
+        progress_callback(1, 1)  # 文件大小为0时直接显示完成
 
 def safe_name(s):
     return re.sub(r'[\\/:*?"<>|]', '_', s)
@@ -123,95 +122,83 @@ def save_history(item, path="history.json"):
         json.dump(history, f, ensure_ascii=False, indent=2)
 
 def get_auto_cookie() -> Optional[str]:
-    """从主流浏览器中自动提取 B站 SESSDATA Cookie"""
+    """
+    从 Edge 和 Chrome 的本地存储中提取 B站 Cookie。
+    使用更稳定的方法：直接读取浏览器加密存储的 Cookies 文件，
+    然后用 Windows DPAPI 解密（仅限 Windows 系统）。
+    如果解密失败，回退到手动解析未加密的 Cookie。
+    """
     import platform
+    import subprocess
+    import tempfile
+    import shutil
+    import sqlite3
 
-    system = platform.system()
-    browsers = []
+    if platform.system() != "Windows":
+        return None
 
-    # Edge (Chromium)
-    if system == "Windows":
-        browsers.append({
+    browsers = [
+        {
             'name': 'Edge',
-            'cookie_path': os.path.join(os.getenv('LOCALAPPDATA', ''),
-                                        'Microsoft', 'Edge', 'User Data', 'Default', 'Cookies'),
-            'host_key': '.bilibili.com'
-        })
-    elif system == "Darwin":  # macOS
-        browsers.append({
-            'name': 'Edge',
-            'cookie_path': os.path.expanduser('~/Library/Application Support/Microsoft Edge/Default/Cookies'),
-            'host_key': '.bilibili.com'
-        })
-    elif system == "Linux":
-        browsers.append({
-            'name': 'Edge',
-            'cookie_path': os.path.expanduser('~/.config/microsoft-edge/Default/Cookies'),
-            'host_key': '.bilibili.com'
-        })
-
-    # Chrome
-    if system == "Windows":
-        browsers.append({
+            'paths': [
+                os.path.join(os.getenv('LOCALAPPDATA', ''),
+                             'Microsoft', 'Edge', 'User Data', 'Default', 'Network', 'Cookies'),
+                os.path.join(os.getenv('LOCALAPPDATA', ''),
+                             'Microsoft', 'Edge', 'User Data', 'Profile 1', 'Network', 'Cookies'),
+            ]
+        },
+        {
             'name': 'Chrome',
-            'cookie_path': os.path.join(os.getenv('LOCALAPPDATA', ''),
-                                        'Google', 'Chrome', 'User Data', 'Default', 'Cookies'),
-            'host_key': '.bilibili.com'
-        })
-    elif system == "Darwin":
-        browsers.append({
-            'name': 'Chrome',
-            'cookie_path': os.path.expanduser('~/Library/Application Support/Google/Chrome/Default/Cookies'),
-            'host_key': '.bilibili.com'
-        })
-    elif system == "Linux":
-        browsers.append({
-            'name': 'Chrome',
-            'cookie_path': os.path.expanduser('~/.config/google-chrome/Default/Cookies'),
-            'host_key': '.bilibili.com'
-        })
-
-    # Firefox (需要特殊处理，因为其 Cookie 存储在 SQLite 数据库中，但结构不同)
-    # 暂时跳过 Firefox，因为读取其 cookie 需要额外的库
+            'paths': [
+                os.path.join(os.getenv('LOCALAPPDATA', ''),
+                             'Google', 'Chrome', 'User Data', 'Default', 'Network', 'Cookies'),
+                os.path.join(os.getenv('LOCALAPPDATA', ''),
+                             'Google', 'Chrome', 'User Data', 'Profile 1', 'Network', 'Cookies'),
+            ]
+        }
+    ]
 
     for browser in browsers:
-        try:
-            cookie_file = browser['cookie_path']
-            if not os.path.exists(cookie_file):
-                # 尝试其他 Profile 目录（如 Profile 1, Profile 2）
-                base_dir = os.path.dirname(cookie_file)
-                if os.path.exists(base_dir):
-                    for item in os.listdir(base_dir):
-                        if item.startswith('Profile'):
-                            alt_path = os.path.join(base_dir, item, 'Cookies')
-                            if os.path.exists(alt_path):
-                                cookie_file = alt_path
-                                break
-
-            if not os.path.exists(cookie_file):
+        for cookie_path in browser['paths']:
+            if not os.path.exists(cookie_path):
                 continue
+            try:
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    dest = os.path.join(tmpdir, 'cookies.db')
+                    shutil.copy2(cookie_path, dest)
 
-            with tempfile.TemporaryDirectory() as tmpdir:
-                dest = os.path.join(tmpdir, 'cookies.db')
-                shutil.copy2(cookie_file, dest)
+                    conn = sqlite3.connect(f'file:{dest}?immutable=1', uri=True)
+                    cursor = conn.cursor()
 
-                conn = sqlite3.connect(f'file:{dest}?immutable=1', uri=True)
-                cursor = conn.cursor()
+                    # 查询所有必要的 Cookie
+                    cookies = {}
+                    for name in ['SESSDATA', 'bili_jct', 'DedeUserID', 'buvid3']:
+                        cursor.execute(
+                            "SELECT value, encrypted_value FROM cookies WHERE host_key LIKE '%bilibili.com' AND name = ?",
+                            (name,)
+                        )
+                        row = cursor.fetchone()
+                        if row:
+                            value, encrypted = row
+                            if value:
+                                cookies[name] = value
+                            elif encrypted:
+                                # 尝试用 Windows DPAPI 解密
+                                try:
+                                    import win32crypt
+                                    decrypted = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
+                                    cookies[name] = decrypted
+                                except:
+                                    pass
 
-                # 尝试多种 host_key 格式
-                for host in [browser['host_key'], 'bilibili.com', '.bilibili.com', 'www.bilibili.com']:
-                    cursor.execute(
-                        "SELECT value FROM cookies WHERE host_key = ? AND name = 'SESSDATA'",
-                        (host,)
-                    )
-                    row = cursor.fetchone()
-                    if row and row[0]:
-                        conn.close()
-                        return row[0]
+                    conn.close()
 
-                conn.close()
-        except Exception:
-            continue
+                    if 'SESSDATA' in cookies:
+                        cookie_parts = [f"{k}={v}" for k, v in cookies.items()]
+                        return '; '.join(cookie_parts)
+            except Exception as e:
+                print(f"[DEBUG] Cookie extraction error for {browser['name']}: {e}")
+                continue
 
     return None
 

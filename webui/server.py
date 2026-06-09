@@ -6,6 +6,7 @@ import os
 import sys
 import webbrowser
 import traceback
+import threading
 
 from downloader import (
     extract_bv, get_video_info, get_available_qualities,
@@ -19,6 +20,9 @@ if getattr(sys, 'frozen', False):
     ROOT = sys._MEIPASS
 else:
     ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# 存储下载进度
+download_progress = {}
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -37,6 +41,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.handle_get_history()
         elif path == "/api/history/delete":
             self.handle_delete_history(params)
+        elif path == "/api/progress":
+            self.handle_progress(params)
         elif path == "/" or path == "":
             self.path = "/index.html"
             super().do_GET()
@@ -68,8 +74,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json({"ok": False, "error": f"无法识别链接中的BV号: {url}"})
             return
         try:
-            # 尝试自动登录，但不强制要求成功
-            try_login_with_browser()
+            logged_in = try_login_with_browser()
+            print(f"[INFO] Browser login: {logged_in}")
             info = get_video_info(bv)
             self.send_json({"ok": True, "bv": bv, **info})
         except Exception as e:
@@ -89,6 +95,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_json({"ok": False, "error": str(e)})
 
+    def handle_progress(self, params):
+        task_id = params.get("task_id", [""])[0]
+        if task_id and task_id in download_progress:
+            self.send_json({"ok": True, "progress": download_progress[task_id]})
+        else:
+            self.send_json({"ok": False, "error": "未找到下载任务"})
+
     def handle_download_post(self, data):
         url = data.get("url", "")
         qn = data.get("qn", 127)
@@ -100,51 +113,70 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_json({"ok": False, "error": f"无法识别链接中的BV号: {url}"})
             return
 
-        try:
-            # 尝试自动登录，但不强制要求成功
-            try_login_with_browser()
-            info = get_video_info(bv)
-            title = info["title"]
-            cid = info["cid"]
-            cover = info["cover"]
+        # 生成任务ID
+        task_id = f"{bv}_{__import__('time').time()}"
 
-            folder = os.path.join(save_path, f"{bv}_{safe_name(title)}")
-            os.makedirs(folder, exist_ok=True)
+        def do_download():
+            try:
+                logged_in = try_login_with_browser()
+                print(f"[INFO] Browser login: {logged_in}")
 
-            results = []
+                info = get_video_info(bv)
+                title = info["title"]
+                cid = info["cid"]
+                cover = info["cover"]
 
-            if "cover" in types:
-                cover_path = os.path.join(folder, "cover.jpg")
-                download_file(cover, cover_path)
-                results.append("cover")
+                folder = os.path.join(save_path, f"{bv}_{safe_name(title)}")
+                os.makedirs(folder, exist_ok=True)
 
-            if "video" in types or "audio" in types:
-                vurl, aurl = get_download_urls(bv, cid, qn)
-                # 判断是否是传统流（音视频合一）
-                is_legacy = (vurl == aurl)
+                results = []
 
-                if "video" in types:
-                    video_path = os.path.join(folder, "video_only.mp4" if not is_legacy else "video.mp4")
-                    download_file(vurl, video_path)
-                    results.append("video")
-                if "audio" in types and not is_legacy:
-                    audio_path = os.path.join(folder, "audio_only.mp3")
-                    download_file(aurl, audio_path)
-                    results.append("audio")
+                # 封面下载
+                if "cover" in types:
+                    cover_path = os.path.join(folder, "cover.jpg")
+                    download_file(cover, cover_path,
+                                  lambda done, total: download_progress.update({task_id: {"cover": done/total}}))
+                    results.append("cover")
 
-            history_item = {
-                "bv": bv,
-                "title": title,
-                "time": __import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "folder": folder
-            }
-            save_history(history_item)
+                # 视频/音频下载
+                if "video" in types or "audio" in types:
+                    vurl, aurl, is_legacy = get_download_urls(bv, cid, qn)
 
-            self.send_json({"ok": True, "results": results, "folder": folder, "title": title})
-        except Exception as e:
-            print(f"[ERROR] download failed: {e}")
-            traceback.print_exc()
-            self.send_json({"ok": False, "error": str(e)})
+                    if "video" in types:
+                        video_name = "video_full.mp4" if is_legacy else "video_only.mp4"
+                        video_path = os.path.join(folder, video_name)
+                        download_file(vurl, video_path,
+                                      lambda done, total: download_progress.update({task_id: {"video": done/total}}))
+                        results.append("video")
+
+                    if "audio" in types:
+                        if not is_legacy:
+                            audio_path = os.path.join(folder, "audio_only.mp3")
+                            download_file(aurl, audio_path,
+                                          lambda done, total: download_progress.update({task_id: {"audio": done/total}}))
+                            results.append("audio")
+                        else:
+                            results.append("audio (included in video)")
+
+                history_item = {
+                    "bv": bv,
+                    "title": title,
+                    "time": __import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "folder": folder
+                }
+                save_history(history_item)
+
+                download_progress[task_id] = {"status": "complete", "folder": folder, "title": title}
+            except Exception as e:
+                print(f"[ERROR] download failed: {e}")
+                traceback.print_exc()
+                download_progress[task_id] = {"status": "error", "error": str(e)}
+
+        # 异步执行下载
+        thread = threading.Thread(target=do_download, daemon=True)
+        thread.start()
+
+        self.send_json({"ok": True, "task_id": task_id, "message": "下载任务已启动"})
 
     def handle_get_history(self):
         history = load_history()
