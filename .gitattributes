@@ -1,0 +1,23 @@
+
+*.cpp linguist-language=C++
+*.c linguist-language=C
+*.py linguist-language=Python
+*.js linguist-language=JavaScript
+*.html linguist-language=HTML
+*.java linguist-language=Java
+*.go linguist-language=Go
+*.cs linguist-language=C#
+*.css linguist-language=CSS
+*.md linguist-language=Markdown
+
+# 如果 errors.txt 被误判为 TeX，强制指定为纯文本
+errors.txt linguist-language=Text
+
+# 将二进制文件从语言统计中排除
+*.exe linguist-vendored
+*.class linguist-vendored
+*.o linguist-vendored
+
+# 将 TeX 文件标记为不统计（如果有的话）
+*.tex linguist-vendored
+*.latex linguist-vendored
