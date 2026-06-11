@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bilibili 下载器 v3.2</title>
+<title>Bilibili 下载器 v3.3</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #f6f7fb 0%, #eef0f7 100%); min-height: 100vh; display: flex; justify-content: center; padding: 30px 15px; }
@@ -13,6 +13,7 @@ body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: li
 h1 { font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #FB7299, #FF6B8A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .subtitle { color: #999; font-size: 13px; margin-top: 4px; }
 .card { background: white; border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+.card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
 .card-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
 input[type="text"], select { width: 100%; padding: 11px 14px; border: 1.5px solid #e8e8ea; border-radius: 10px; font-size: 14px; background: #fafbfc; color: #333; outline: none; transition: border 0.2s; font-family: inherit; }
 input:focus, select:focus { border-color: #FB7299; }
@@ -28,7 +29,7 @@ input:focus, select:focus { border-color: #FB7299; }
 .checkbox-group { display: flex; gap: 20px; }
 .checkbox-group label { display: flex; align-items: center; gap: 5px; font-size: 14px; cursor: pointer; }
 .info-preview { display: flex; gap: 14px; }
-.info-preview img { width: 110px; height: 68px; border-radius: 8px; object-fit: cover; }
+.info-preview img { width: 110px; height: 68px; border-radius: 8px; object-fit: cover; background: #eee; }
 .progress-bar { height: 6px; background: #eee; border-radius: 3px; margin-top: 8px; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, #FB7299, #00A1D6); border-radius: 3px; width: 0%; transition: width 0.3s; }
 .status-bar { text-align: center; color: #999; font-size: 12px; margin-top: 10px; }
@@ -43,11 +44,10 @@ input:focus, select:focus { border-color: #FB7299; }
 <div class="container">
     <div class="header">
         <div class="logo">🎬</div>
-        <h1>Bilibili 下载器 v3.2</h1>
+        <h1>Bilibili 下载器 v3.3</h1>
         <p class="subtitle">粘贴链接 · 选择内容 · 开始下载</p>
     </div>
 
-    <!-- 链接输入 -->
     <div class="card">
         <div class="card-title">📎 视频链接</div>
         <div style="display: flex; gap: 8px;">
@@ -56,11 +56,10 @@ input:focus, select:focus { border-color: #FB7299; }
         </div>
     </div>
 
-    <!-- 视频信息 -->
     <div class="card hidden" id="infoCard">
         <div class="card-title">📺 视频信息</div>
         <div class="info-preview">
-            <img id="coverImg" src="" alt="封面">
+            <img id="coverImg" src="" alt="封面" onerror="this.style.display='none'">
             <div>
                 <div style="font-weight:600;" id="infoTitle"></div>
                 <div style="font-size:12px;color:#999;" id="infoMeta"></div>
@@ -68,7 +67,6 @@ input:focus, select:focus { border-color: #FB7299; }
         </div>
     </div>
 
-    <!-- 视频预览 -->
     <div class="card hidden" id="previewCard">
         <div class="card-title">🎥 视频预览</div>
         <div class="video-preview-container">
@@ -76,23 +74,20 @@ input:focus, select:focus { border-color: #FB7299; }
         </div>
     </div>
 
-    <!-- 下载内容选择 -->
     <div class="card">
         <div class="card-title">📥 下载内容</div>
         <div class="checkbox-group">
-            <label><input type="checkbox" id="chkVideo" checked> 视频</label>
+            <label><input type="checkbox" id="chkVideo" checked> 视频（含声音）</label>
             <label><input type="checkbox" id="chkAudio" checked> 音频</label>
             <label><input type="checkbox" id="chkCover" checked> 封面</label>
         </div>
     </div>
 
-    <!-- 清晰度 -->
     <div class="card">
         <div class="card-title">🎯 清晰度</div>
         <select id="qualitySelect"><option value="127">最高画质 (无损)</option></select>
     </div>
 
-    <!-- 保存路径 -->
     <div class="card">
         <div class="card-title">📁 保存路径</div>
         <div style="display: flex; align-items: center;">
@@ -101,7 +96,6 @@ input:focus, select:focus { border-color: #FB7299; }
         </div>
     </div>
 
-    <!-- 一键登录卡片 -->
     <div class="card" id="loginCard">
         <div class="card-title">🔐 会员权限（下载充电/大会员视频）</div>
         <p style="font-size:12px; color:#666; margin-bottom:10px;">
@@ -117,15 +111,12 @@ input:focus, select:focus { border-color: #FB7299; }
         </div>
     </div>
 
-    <!-- 下载不完整的警告 -->
     <div id="partialWarning" class="partial-warning">
         ⚠️ <span id="partialWarningText"></span>
     </div>
 
-    <!-- 下载按钮 -->
     <button class="btn btn-primary" id="downloadBtn" onclick="startDownload()">开始下载 一w一</button>
 
-    <!-- 进度条 -->
     <div class="card hidden" id="progressCard">
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <div style="font-size:12px;color:#999;margin-top:4px;" id="progressText"></div>
@@ -183,7 +174,13 @@ async function fetchInfo() {
     if(!d.ok) { setStatus("获取失败: "+d.error); return; }
     currentBV=d.bv; currentCID=d.cid;
     document.getElementById('infoCard').classList.remove('hidden');
-    document.getElementById('coverImg').src = d.cover;
+    const coverImg = document.getElementById('coverImg');
+    if (d.cover_base64) {
+        coverImg.src = d.cover_base64;
+    } else {
+        coverImg.src = d.cover;
+    }
+    coverImg.style.display = 'block';
     document.getElementById('infoTitle').textContent = d.title;
     document.getElementById('infoMeta').textContent = `UP主: ${d.owner} | ${formatDuration(d.duration)}`;
 

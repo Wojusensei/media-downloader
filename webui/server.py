@@ -10,9 +10,9 @@ import threading
 
 from downloader import (
     extract_bv, get_video_info, get_available_qualities,
-    get_download_urls, download_file, safe_name,
+    get_legacy_video_url, get_dash_audio_url, download_file, safe_name,
     load_history, save_history, try_login_with_browser, set_cookie,
-    get_auto_cookie, get_mp4_duration
+    get_auto_cookie, get_mp4_duration, download_cover_to_base64
 )
 
 PORT = 8765
@@ -87,7 +87,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not try_login_with_browser():
                 print("[INFO] 自动提取 Cookie 失败，尝试手动 Cookie（如果有）")
             info = get_video_info(bv)
-            self.send_json({"ok": True, "bv": bv, **info})
+            cover_base64 = download_cover_to_base64(info["cover"])
+            self.send_json({
+                "ok": True,
+                "bv": bv,
+                **info,
+                "cover_base64": cover_base64 or info["cover"]
+            })
         except Exception as e:
             print(f"[ERROR] get_video_info failed: {e}")
             traceback.print_exc()
@@ -128,11 +134,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         def do_download():
             try:
+                # 自动登录
                 auto_success = try_login_with_browser()
                 if not auto_success and manual_cookie:
                     print("[INFO] 使用手动输入的 Cookie")
                     set_cookie(manual_cookie)
-                    auto_success = True  # 手动输入视为已登录
+                    auto_success = True
                 elif not auto_success:
                     print("[INFO] 未获取到任何登录信息，以游客模式下载")
 
@@ -147,61 +154,55 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
                 results = []
 
+                # 下载封面
                 if "cover" in types:
                     cover_path = os.path.join(folder, "cover.jpg")
                     download_file(cover, cover_path, lambda d,t: download_progress.update({task_id: {"cover": d/t}}))
                     results.append("cover")
 
-                video_downloaded = False
                 video_path = ""
+                video_downloaded = False
 
-                if "video" in types or "audio" in types:
-                    vurl, aurl, is_legacy = get_download_urls(bv, cid, qn)
+                # 下载视频（传统流，一定有声音）
+                if "video" in types:
+                    video_url = get_legacy_video_url(bv, cid, qn)
+                    video_path = os.path.join(folder, "video.mp4")
+                    download_file(video_url, video_path, lambda d,t: download_progress.update({task_id: {"video": d/t}}))
+                    results.append("video")
+                    video_downloaded = True
 
-                    if "video" in types:
-                        video_name = "video_full.mp4" if is_legacy else "video_only.mp4"
-                        video_path = os.path.join(folder, video_name)
-                        download_file(vurl, video_path, lambda d,t: download_progress.update({task_id: {"video": d/t}}))
-                        results.append("video")
-                        video_downloaded = True
+                # 下载独立音频（尝试 DASH 流）
+                if "audio" in types:
+                    audio_url = get_dash_audio_url(bv, cid, qn)
+                    if audio_url:
+                        audio_path = os.path.join(folder, "audio.mp3")
+                        download_file(audio_url, audio_path, lambda d,t: download_progress.update({task_id: {"audio": d/t}}))
+                        results.append("audio")
+                    else:
+                        print("[WARN] 无法获取独立音频流，可能该视频不支持分离音频")
+                        results.append("audio (not available)")
 
-                    if "audio" in types:
-                        if not is_legacy:
-                            audio_path = os.path.join(folder, "audio_only.mp3")
-                            download_file(aurl, audio_path, lambda d,t: download_progress.update({task_id: {"audio": d/t}}))
-                            results.append("audio")
-                        else:
-                            results.append("audio (included in video)")
-
-                if video_downloaded and original_duration > 60:
+                # 完整性检测：仅当提供了登录信息且视频时长 > 60秒才检查
+                if video_downloaded and auto_success and original_duration > 60:
                     actual_duration = get_mp4_duration(video_path)
                     if actual_duration is not None:
                         print(f"[INFO] 原视频时长: {original_duration}s, 下载后时长: {actual_duration}s")
                         if actual_duration < original_duration * 0.9:
-                            # 判断是否已登录
-                            if auto_success:
-                                message = "您的B站账号可能没有购买该视频或开通大会员，无法下载完整视频。"
-                            else:
-                                message = "视频不完整！请先关闭浏览器，点击“一键获取浏览器登录”后再试。"
                             download_progress[task_id] = {
                                 "status": "partial",
                                 "folder": folder,
                                 "title": title,
-                                "message": message
+                                "message": "您的B站账号可能没有购买该视频或开通大会员，无法下载完整视频。"
                             }
                             return
                     else:
                         file_size_mb = os.path.getsize(video_path) / (1024 * 1024)
                         if file_size_mb < 50:
-                            if auto_success:
-                                message = "您的B站账号可能没有购买该视频或开通大会员，无法下载完整视频。"
-                            else:
-                                message = "视频可能不完整。请先关闭浏览器，点击“一键获取浏览器登录”后再试。"
                             download_progress[task_id] = {
                                 "status": "partial",
                                 "folder": folder,
                                 "title": title,
-                                "message": message
+                                "message": "您的B站账号可能没有购买该视频或开通大会员，无法下载完整视频。"
                             }
                             return
 

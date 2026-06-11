@@ -68,44 +68,52 @@ def get_available_qualities(bv, cid):
     qualities.append({"qn": 127, "desc": "最高画质 (无损)"})
     return qualities
 
-def get_download_urls(bv, cid, qn=127):
-    # 尝试 DASH 流
+def get_legacy_video_url(bv, cid, qn=127):
+    """获取传统流（包含声音）的视频地址"""
+    api = "https://api.bilibili.com/x/player/playurl"
+    params = {"bvid": bv, "cid": cid, "qn": qn, "fnval": 1}
+    r = requests.get(api, params=params, headers=HEADERS, timeout=30)
+    data = r.json()
+    if data["code"] == 0:
+        durl = data["data"].get("durl")
+        if durl and len(durl) > 0:
+            return durl[0]["url"]
+    raise Exception(f"获取传统视频流失败: {data.get('message', '未知错误')}")
+
+def get_dash_audio_url(bv, cid, qn=127):
+    """获取 DASH 流中的音频地址（可能失败）"""
     api = "https://api.bilibili.com/x/player/playurl"
     params = {"bvid": bv, "cid": cid, "qn": qn, "fnval": 16}
     r = requests.get(api, params=params, headers=HEADERS, timeout=30)
     data = r.json()
     if data["code"] == 0:
         dash = data["data"].get("dash")
-        if dash and dash.get("video") and dash.get("audio"):
-            video_url = dash["video"][0]["baseUrl"]
-            audio_url = dash["audio"][0]["baseUrl"]
-            return video_url, audio_url, False
-
-    # 回退传统流
-    params["fnval"] = 1
-    r = requests.get(api, params=params, headers=HEADERS, timeout=30)
-    data = r.json()
-    if data["code"] == 0:
-        durl = data["data"].get("durl")
-        if durl and len(durl) > 0:
-            video_url = durl[0]["url"]
-            return video_url, video_url, True
-
-    raise Exception(f"获取下载地址失败 (错误码 {data.get('code', '未知')}): {data.get('message', '无详细错误信息')}")
+        if dash and dash.get("audio"):
+            return dash["audio"][0]["baseUrl"]
+    return None
 
 def download_file(url, path, callback=None):
-    resp = requests.get(url, headers=HEADERS, stream=True, timeout=60)
-    total = int(resp.headers.get('content-length', 0))
-    downloaded = 0
-    with open(path, 'wb') as f:
-        for chunk in resp.iter_content(1024*1024):
-            if chunk:
-                f.write(chunk)
-                downloaded += len(chunk)
-                if callback and total > 0:
-                    callback(downloaded, total)
-    if callback and total == 0:
-        callback(1, 1)
+    """下载文件，失败时抛出异常"""
+    for i in range(3):
+        try:
+            resp = requests.get(url, headers=HEADERS, stream=True, timeout=60)
+            resp.raise_for_status()
+            total = int(resp.headers.get('content-length', 0))
+            downloaded = 0
+            with open(path, 'wb') as f:
+                for chunk in resp.iter_content(1024*1024):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if callback and total > 0:
+                            callback(downloaded, total)
+            if callback and total == 0:
+                callback(1, 1)
+            return
+        except Exception as e:
+            if i == 2:
+                raise Exception(f"下载失败 (重试3次后): {str(e)}")
+            continue
 
 def safe_name(s):
     return re.sub(r'[\\/:*?"<>|]', '_', s)
@@ -249,4 +257,15 @@ def get_mp4_duration(filepath: str) -> Optional[float]:
             return duration / timescale
     except Exception as e:
         print(f"[DEBUG] 解析视频时长失败: {e}")
+        return None
+
+def download_cover_to_base64(url: str) -> Optional[str]:
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        resp.raise_for_status()
+        import base64
+        b64 = base64.b64encode(resp.content).decode('utf-8')
+        content_type = resp.headers.get('Content-Type', 'image/jpeg')
+        return f"data:{content_type};base64,{b64}"
+    except:
         return None
