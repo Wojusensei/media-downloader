@@ -1,8 +1,11 @@
 # Media Downloader
 
+发行版本：
 [![下载](https://img.shields.io/badge/⬇️%20下载-Windows%20v3.3-FB7299?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Wojusensei/media-downloader/releases/tag/v3.3)
 
-多语言爬虫工具史山代码集合包，可以输入 Bilibili 视频链接自动下载视频、音频和封面
+仓库里的文件是多语言版本的爬虫工具史山代码集合，功能是输入B站的视频url自动下载视频、音频和封面
+♿️啊不过因为cookie的原因下载不了付费资源♿️
+
 
 ## 支持的平台
 - [x] Bilibili (B站)
