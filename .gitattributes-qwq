@@ -1,0 +1,15 @@
+*.cpp linguist-language=C++
+*.c linguist-language=C
+*.py linguist-language=Python
+*.js linguist-language=JavaScript
+*.html linguist-language=HTML
+*.java linguist-language=Java
+*.go linguist-language=Go
+*.cs linguist-language=C#
+*.css linguist-language=CSS
+*.md linguist-language=Markdown
+*.exe linguist-vendored
+*.class linguist-vendored
+*.o linguist-vendored
+*.tex linguist-vendored
+*.latex linguist-vendored
