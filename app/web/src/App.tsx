@@ -15,6 +15,7 @@ import {
   type HistoryEntry,
   type DownloadRequest,
 } from './api'
+import { useI18n } from './i18n'
 import { TopBar } from './components/TopBar'
 import { Hero } from './components/Hero'
 import { VideoCard } from './components/VideoCard'
@@ -25,6 +26,7 @@ import { useToast } from './toast'
 
 export default function App() {
   const toast = useToast()
+  const { t, translateBackendError } = useI18n()
   const [system, setSystem] = useState<SystemInfo | null>(null)
   const [result, setResult] = useState<ParseResult | null>(null)
   const [parsing, setParsing] = useState(false)
@@ -41,8 +43,8 @@ export default function App() {
         setSystem(info)
         setSaveDir((cur) => cur || info.saveDir)
       })
-      .catch(() => toast('error', '无法连接本地服务，请重启应用'))
-  }, [toast])
+      .catch(() => toast('error', t('toast.connLost')))
+  }, [toast, t])
 
   useEffect(refreshSystem, [refreshSystem])
 
@@ -50,28 +52,28 @@ export default function App() {
   useEffect(() => {
     return subscribeEvents((ev) => {
       if (ev.rawType === 'task' && ev.task) {
-        const t = ev.task
+        const tk = ev.task
         setTasks((cur) => {
-          const idx = cur.findIndex((x) => x.id === t.id)
-          if (idx === -1) return [t, ...cur]
+          const idx = cur.findIndex((x) => x.id === tk.id)
+          if (idx === -1) return [tk, ...cur]
           const next = cur.slice()
-          next[idx] = t
+          next[idx] = tk
           return next
         })
-        if (t.state === 'done' && t.finalPath) {
-          toast('success', `下载完成：${t.title}`)
-        } else if (t.state === 'error') {
-          toast('error', `下载失败：${t.error}`)
+        if (tk.state === 'done' && tk.finalPath) {
+          toast('success', t('toast.done', { title: tk.title }))
+        } else if (tk.state === 'error') {
+          toast('error', t('toast.failed', { reason: translateBackendError(tk.error) }))
         }
       } else if (ev.rawType === 'tasks-reset') {
         setTasks([])
       } else if (ev.rawType === 'history' && Array.isArray(ev.raw)) {
         setHistory(ev.raw as HistoryEntry[])
       } else if (ev.rawType === 'toast' && ev.body) {
-        toast(ev.level === 'error' ? 'error' : 'info', ev.body)
+        toast(ev.level === 'error' ? 'error' : 'info', translateBackendError(ev.body))
       }
     })
-  }, [toast])
+  }, [toast, t, translateBackendError])
 
   const doParse = useCallback(
     async (url: string) => {
@@ -83,60 +85,70 @@ export default function App() {
           resultAnchor.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         })
       } catch (e) {
-        toast('error', e instanceof Error ? e.message : '解析失败')
+        toast('error', e instanceof Error ? translateBackendError(e.message) : t('toast.parseFailed'))
       } finally {
         setParsing(false)
       }
     },
-    [toast],
+    [toast, translateBackendError, t],
   )
 
-  const doDownload = useCallback(async (req: DownloadRequest) => {
-    try {
-      const { task } = await startDownload(req)
-      setTasks((cur) => [task, ...cur])
-    } catch (e) {
-      toast('error', e instanceof Error ? e.message : '任务创建失败')
-    }
-  }, [toast])
+  const doDownload = useCallback(
+    async (req: DownloadRequest) => {
+      try {
+        const { task } = await startDownload(req)
+        setTasks((cur) => [task, ...cur])
+      } catch (e) {
+        toast('error', e instanceof Error ? translateBackendError(e.message) : t('toast.createFailed'))
+      }
+    },
+    [toast, translateBackendError, t],
+  )
 
   const doCancel = useCallback(
     (id: string) => {
-      cancelTask(id).catch(() => toast('error', '取消失败'))
+      cancelTask(id).catch(() => toast('error', t('toast.cancelFailed')))
     },
-    [toast],
+    [toast, t],
   )
 
   const doClear = useCallback(() => {
     clearFinished()
-      .then(() => setTasks((cur) => cur.filter((t) => t.state !== 'done' && t.state !== 'error' && t.state !== 'canceled')))
-      .catch(() => toast('error', '操作失败'))
-  }, [toast])
+      .then(() =>
+        setTasks((cur) =>
+          cur.filter((tk) => tk.state !== 'done' && tk.state !== 'error' && tk.state !== 'canceled'),
+        ),
+      )
+      .catch(() => toast('error', t('toast.opFailed')))
+  }, [toast, t])
 
   const doPickFolder = useCallback(async () => {
     try {
       const { path } = await pickFolder()
       if (path) {
         setSaveDir(path)
-        toast('info', `保存位置已更新：${path}`)
+        toast('info', t('toast.saveDirUpdated', { path }))
       }
     } catch (e) {
-      toast('error', e instanceof Error ? e.message : '无法打开目录选择')
+      toast('error', e instanceof Error ? translateBackendError(e.message) : t('toast.folderPickerFailed'))
     }
     return null
-  }, [toast])
+  }, [toast, translateBackendError, t])
 
-  const doDeleteHistory = useCallback((id: string) => {
-    deleteHistory(id)
-      .then(() => setHistory((cur) => cur.filter((h) => h.id !== id)))
-      .catch(() => toast('error', '删除失败'))
-  }, [toast])
+  const doDeleteHistory = useCallback(
+    (id: string) => {
+      deleteHistory(id)
+        .then(() => setHistory((cur) => cur.filter((h) => h.id !== id)))
+        .catch(() => toast('error', t('toast.deleteFailed')))
+    },
+    [toast, t],
+  )
 
   const doClearHistory = useCallback(() => {
     clearHistory()
       .then(() => setHistory([]))
-      .catch(() => toast('error', '清空失败'))
-  }, [toast])
+      .catch(() => toast('error', t('toast.clearFailed')))
+  }, [toast, t])
 
   return (
     <>
@@ -173,12 +185,6 @@ export default function App() {
           </div>
         </div>
       </main>
-
-      <footer className="page footer text-tertiary">
-        <span>本地运行 · 不上传任何数据</span>
-        <span className="dot-sep" aria-hidden />
-        <span className="num">{system ? `v${system.version}` : ''}</span>
-      </footer>
 
       <HistoryDrawer
         open={historyOpen}

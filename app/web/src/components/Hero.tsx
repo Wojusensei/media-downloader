@@ -1,6 +1,7 @@
-// 首屏：大标题 + 链接输入框（粘贴检测、快捷键提交）。
+// 首屏：大标题（左右分布）+ 链接输入框（粘贴检测、快捷键提交）。
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRightIcon, LinkIcon, PasteIcon, SpinnerIcon } from '../icons'
+import { useI18n } from '../i18n'
 
 export function Hero({
   onParse,
@@ -13,6 +14,7 @@ export function Hero({
 }) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const { t } = useI18n()
 
   // 粘贴即解析：输入框获得焦点时监听 paste 事件。
   const onPaste = (e: React.ClipboardEvent) => {
@@ -46,12 +48,11 @@ export function Hero({
       <div className="page">
         {!hasResult && (
           <div className="hero-headline rise-in">
-            <h1 className="hero-title">
-              把喜欢的视频
-              <br />
-              <span className="gradient-text">稳稳收进本地</span>
+            <h1 className="hero-spread">
+              <span className="hero-spread-l">{t('hero.titleL')}</span>
+              <span className="hero-spread-r gradient-text">{t('hero.titleR')}</span>
             </h1>
-            <p className="hero-sub">视频 · 音频 · 封面，多清晰度选择，登录解锁更高画质</p>
+            <p className="hero-sub">{t('hero.sub')}</p>
           </div>
         )}
 
@@ -63,7 +64,7 @@ export function Hero({
             <input
               ref={inputRef}
               className="hero-input-field"
-              placeholder="粘贴视频链接或 BV 号"
+              placeholder={t('hero.placeholder')}
               value={value}
               spellCheck={false}
               autoFocus
@@ -72,7 +73,7 @@ export function Hero({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submit()
               }}
-              aria-label="视频链接"
+              aria-label={t('hero.placeholder')}
             />
             <button
               className="hero-paste"
@@ -87,23 +88,21 @@ export function Hero({
                   inputRef.current?.focus()
                 }
               }}
-              title="从剪贴板粘贴"
+              title={t('hero.pasteTitle')}
             >
               <PasteIcon size={16} />
-              <span>粘贴</span>
+              <span>{t('hero.paste')}</span>
             </button>
             <button
               className="hero-submit"
               onClick={submit}
               disabled={parsing || !value.trim()}
-              title="解析视频"
+              title={t('hero.submitTitle')}
             >
               {parsing ? <SpinnerIcon size={18} /> : <ArrowRightIcon size={18} />}
             </button>
           </div>
-          <div className="hero-hint text-tertiary">
-            支持 bilibili.com 链接、b23.tv 短链、纯 BV 号 · 粘贴后自动解析 · Command / Ctrl + Enter 开始
-          </div>
+          <div className="hero-hint text-tertiary">{t('hero.hint')}</div>
         </div>
       </div>
     </section>

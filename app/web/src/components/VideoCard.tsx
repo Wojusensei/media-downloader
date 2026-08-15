@@ -13,6 +13,7 @@ import {
   type ParseResult,
   type SystemInfo,
 } from '../api'
+import { useI18n } from '../i18n'
 import { SegmentedControl } from './SegmentedControl'
 import { useToast } from '../toast'
 import * as api from '../api'
@@ -34,6 +35,7 @@ export function VideoCard({
 }) {
   const { video, qualities, audioQualities } = result
   const toast = useToast()
+  const { t, qualityLabel, audioQualityLabel } = useI18n()
 
   const [type, setType] = useState<ContentType>('video')
   const [qn, setQn] = useState(() => qualities?.[0]?.qn ?? 80)
@@ -45,10 +47,10 @@ export function VideoCard({
 
   const qualityHint = useMemo(() => {
     if (type !== 'video') return ''
-    if (!system.ffmpeg) return '未检测到 ffmpeg：仅能下载自带声音的标准画质'
-    if (!result.loggedIn) return '游客模式画质有限，登录后可解锁更高清晰度'
+    if (!system.ffmpeg) return t('card.hintNoFFmpeg')
+    if (!result.loggedIn) return t('card.hintGuest')
     return ''
-  }, [type, system.ffmpeg, result.loggedIn])
+  }, [type, system.ffmpeg, result.loggedIn, t])
 
   const submit = () => {
     const req: api.DownloadRequest = {
@@ -63,17 +65,17 @@ export function VideoCard({
       ;(req as api.DownloadRequest & { page?: number }).page = page
     }
     onDownload(req)
-    toast('success', '任务已加入下载队列')
+    toast('success', t('toast.queued'))
   }
 
   return (
-    <section className="video-card glass rise-in" aria-label="视频信息">
+    <section className="video-card glass rise-in" aria-label={t('card.type')}>
       <div className="video-card-cover">
         <img src={coverProxy(video.cover)} alt={video.title} loading="lazy" />
         <span className="video-duration num">{formatDuration(video.duration)}</span>
         {result.vip && (
           <span className="video-vip-flag">
-            <span className="video-vip-text">大会员画质可用</span>
+            <span className="video-vip-text">{t('card.vipFlag')}</span>
           </span>
         )}
       </div>
@@ -92,8 +94,8 @@ export function VideoCard({
 
         {video.pages.length > 1 && (
           <div className="option-row">
-            <div className="option-label text-tertiary">分集</div>
-            <div className="page-picker" role="listbox" aria-label="选择分集">
+            <div className="option-label text-tertiary">{t('card.pages')}</div>
+            <div className="page-picker" role="listbox" aria-label={t('card.pagesAria')}>
               {video.pages.slice(0, 24).map((p) => (
                 <button
                   key={p.cid}
@@ -114,43 +116,43 @@ export function VideoCard({
         )}
 
         <div className="option-row">
-          <div className="option-label text-tertiary">内容</div>
+          <div className="option-label text-tertiary">{t('card.type')}</div>
           <SegmentedControl<ContentType>
-            ariaLabel="下载内容类型"
+            ariaLabel={t('card.typeAria')}
             value={type}
             onChange={setType}
             options={[
-              { value: 'video', label: '视频', icon: <VideoIcon size={15} /> },
-              { value: 'audio', label: '音频', icon: <AudioIcon size={15} /> },
-              { value: 'cover', label: '封面', icon: <ImageIcon size={15} /> },
+              { value: 'video', label: t('type.video'), icon: <VideoIcon size={15} /> },
+              { value: 'audio', label: t('type.audio'), icon: <AudioIcon size={15} /> },
+              { value: 'cover', label: t('type.cover'), icon: <ImageIcon size={15} /> },
             ]}
           />
         </div>
 
         {type === 'video' && qualities && qualities.length > 0 && (
           <div className="option-row">
-            <div className="option-label text-tertiary">画质</div>
-            <div className="chip-row" role="radiogroup" aria-label="画质">
-              {qualities.map((q) => (
-                <button
-                  key={q.qn}
-                  role="radio"
-                  aria-checked={q.qn === qn}
-                  className={`chip ${q.qn === qn ? 'is-active' : ''}`}
-                  onClick={() => setQn(q.qn)}
-                >
-                  {q.desc}
-                </button>
-              ))}
+            <div className="option-label text-tertiary">{t('card.quality')}</div>
+            <div className="chip-row" role="radiogroup" aria-label={t('card.qualityAria')}>
+                {qualities.map((q) => (
+                  <button
+                    key={q.qn}
+                    role="radio"
+                    aria-checked={q.qn === qn}
+                    className={`chip ${q.qn === qn ? 'is-active' : ''}`}
+                    onClick={() => setQn(q.qn)}
+                  >
+                    {qualityLabel(q.qn, q.desc)}
+                  </button>
+                ))}
             </div>
           </div>
         )}
 
         {type === 'audio' && (
           <div className="option-row">
-            <div className="option-label text-tertiary">音质与格式</div>
+            <div className="option-label text-tertiary">{t('card.audio')}</div>
             <div className="audio-options">
-              <div className="chip-row" role="radiogroup" aria-label="音质">
+              <div className="chip-row" role="radiogroup" aria-label={t('card.audioQAria')}>
                 {(audioQualities ?? []).map((a) => (
                   <button
                     key={a.id}
@@ -159,13 +161,13 @@ export function VideoCard({
                     className={`chip ${a.id === audioId ? 'is-active' : ''}`}
                     onClick={() => setAudioId(a.id)}
                   >
-                    {a.desc}
+                    {audioQualityLabel(a.id, a.desc)}
                   </button>
                 ))}
               </div>
               <SegmentedControl<'m4a' | 'mp3'>
                 size="sm"
-                ariaLabel="音频格式"
+                ariaLabel={t('card.audioFAria')}
                 value={audioFormat}
                 onChange={setAudioFormat}
                 options={
@@ -186,8 +188,8 @@ export function VideoCard({
         )}
 
         <div className="option-row">
-          <div className="option-label text-tertiary">保存至</div>
-          <button className="path-picker" onClick={() => void onPickFolder()} title="选择其他文件夹">
+          <div className="option-label text-tertiary">{t('card.saveTo')}</div>
+          <button className="path-picker" onClick={() => void onPickFolder()} title={t('card.pickFolderTitle')}>
             <FolderIcon size={16} />
             <span className="path-text mono">{saveDir}</span>
           </button>
@@ -197,7 +199,11 @@ export function VideoCard({
           <button className="primary-button" onClick={submit}>
             <DownloadIcon size={17} />
             <span>
-              {type === 'video' ? '下载视频' : type === 'audio' ? '下载音频' : '下载封面'}
+              {type === 'video'
+                ? t('card.downloadVideo')
+                : type === 'audio'
+                  ? t('card.downloadAudio')
+                  : t('card.downloadCover')}
             </span>
           </button>
         </div>

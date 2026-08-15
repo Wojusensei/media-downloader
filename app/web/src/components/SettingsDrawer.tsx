@@ -16,6 +16,7 @@ import {
 } from '../icons'
 import { importBrowserCookie, setManualCookie, clearCookie, type SystemInfo, type LoginStatus } from '../api'
 import { useTheme, type ThemeChoice } from '../theme'
+import { useI18n } from '../i18n'
 import { SegmentedControl } from './SegmentedControl'
 import { useToast } from '../toast'
 
@@ -31,6 +32,7 @@ export function SettingsDrawer({
   onLoginChange: () => void
 }) {
   const toast = useToast()
+  const { t, translateBackendError } = useI18n()
   const { choice, setChoice } = useTheme()
   const [importing, setImporting] = useState(false)
   const [sessdata, setSessdata] = useState('')
@@ -41,13 +43,13 @@ export function SettingsDrawer({
     try {
       const res = await importBrowserCookie()
       if (res.login?.loggedIn) {
-        toast('success', `已从 ${res.browser} 导入登录态，欢迎 ${res.login.username}`)
+        toast('success', t('toast.imported', { browser: res.browser, name: res.login.username }))
       } else {
-        toast('info', `已从 ${res.browser} 导入 Cookie，但校验未通过（可能未登录 B 站）`)
+        toast('info', t('toast.importNoLogin', { browser: res.browser }))
       }
       onLoginChange()
     } catch (e) {
-      toast('error', e instanceof Error ? e.message : '导入失败')
+      toast('error', e instanceof Error ? translateBackendError(e.message) : t('toast.importFailed'))
     } finally {
       setImporting(false)
     }
@@ -58,34 +60,41 @@ export function SettingsDrawer({
     try {
       const res = await setManualCookie(sessdata.trim())
       if (res.login?.loggedIn) {
-        toast('success', `登录成功，欢迎 ${res.login.username}`)
+        toast('success', t('toast.loginOk', { name: res.login.username }))
       } else {
-        toast('error', 'SESSDATA 无效或已过期')
+        toast('error', t('toast.badSessdata'))
       }
       setSessdata('')
       onLoginChange()
     } catch (e) {
-      toast('error', e instanceof Error ? e.message : '设置失败')
+      toast('error', e instanceof Error ? translateBackendError(e.message) : t('toast.applyFailed'))
     }
   }
 
   const doLogout = async () => {
     try {
       await clearCookie()
-      toast('info', '已退出登录，回到游客模式')
+      toast('info', t('toast.logout'))
       onLoginChange()
     } catch {
-      toast('error', '操作失败')
+      toast('error', t('toast.opFailed'))
     }
   }
+
+  const platformKey =
+    system?.platform === 'darwin'
+      ? 'settings.platform.darwin'
+      : system?.platform === 'windows'
+        ? 'settings.platform.windows'
+        : ''
 
   return (
     <>
       <div className={`drawer-overlay ${open ? 'is-open' : ''}`} onClick={onClose} aria-hidden />
-      <aside className={`drawer ${open ? 'is-open' : ''}`} aria-label="设置" aria-hidden={!open}>
+      <aside className={`drawer ${open ? 'is-open' : ''}`} aria-label={t('settings.title')} aria-hidden={!open}>
         <header className="drawer-head">
-          <h3 className="section-title">设置</h3>
-          <button className="icon-button" onClick={onClose} aria-label="关闭">
+          <h3 className="section-title">{t('settings.title')}</h3>
+          <button className="icon-button" onClick={onClose} aria-label={t('toast.close')}>
             <CloseIcon size={17} />
           </button>
         </header>
@@ -93,7 +102,7 @@ export function SettingsDrawer({
         <div className="settings-body">
           {/* 账号 */}
           <section className="settings-group">
-            <h4 className="settings-group-title">B 站账号</h4>
+            <h4 className="settings-group-title">{t('settings.accountGroup')}</h4>
             {login ? (
               <div className="settings-account glass is-flat">
                 <span className="settings-account-icon is-ok">
@@ -105,14 +114,14 @@ export function SettingsDrawer({
                     {login.vip && (
                       <span className="account-vip">
                         <VipIcon size={12} />
-                        大会员
+                        {t('topbar.vip')}
                       </span>
                     )}
                   </div>
-                  <div className="text-tertiary">已登录 · 可下载会员清晰度</div>
+                  <div className="text-tertiary">{t('settings.loggedInHint')}</div>
                 </div>
                 <button className="ghost-button" onClick={doLogout}>
-                  退出
+                  {t('settings.logout')}
                 </button>
               </div>
             ) : (
@@ -121,51 +130,51 @@ export function SettingsDrawer({
                   <UserIcon size={17} />
                 </span>
                 <div className="settings-account-info">
-                  <div className="settings-account-name">游客模式</div>
-                  <div className="text-tertiary">登录后解锁 1080P 及以上清晰度</div>
+                  <div className="settings-account-name">{t('settings.guestCard')}</div>
+                  <div className="text-tertiary">{t('settings.guestHint')}</div>
                 </div>
               </div>
             )}
 
             <button className="wide-button" onClick={doImport} disabled={importing}>
               <RefreshIcon size={16} className={importing ? 'is-spinning' : ''} />
-              {importing ? '正在读取浏览器…' : '从本机浏览器导入登录（Chrome / Edge / Firefox / Safari）'}
+              {importing ? t('settings.importing') : t('settings.importBtn')}
             </button>
             <p className="settings-note text-tertiary">
               <InfoIcon size={13} />
-              macOS 首次读取 Chrome / Safari 时，系统可能请求钥匙串与磁盘访问权限，请允许。
+              {t('settings.keychainNote')}
             </p>
 
             <div className="manual-cookie">
               <input
                 className="text-input mono"
-                placeholder="或手动粘贴 SESSDATA"
+                placeholder={t('settings.sessdataPlaceholder')}
                 value={sessdata}
                 spellCheck={false}
                 onChange={(e) => setSessdata(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && void doManual()}
-                aria-label="SESSDATA"
+                aria-label={t('settings.sessdataPlaceholder')}
               />
               <button className="wide-button" onClick={doManual} disabled={!sessdata.trim()}>
                 <CheckIcon size={15} />
-                使用该 Cookie
+                {t('settings.sessdataBtn')}
               </button>
             </div>
           </section>
 
           {/* 主题 */}
           <section className="settings-group">
-            <h4 className="settings-group-title">外观</h4>
+            <h4 className="settings-group-title">{t('settings.appearanceGroup')}</h4>
             <div className="settings-row">
-              <span className="text-secondary">主题模式</span>
+              <span className="text-secondary">{t('settings.themeLabel')}</span>
               <SegmentedControl<ThemeChoice>
-                ariaLabel="主题模式"
+                ariaLabel={t('settings.themeLabel')}
                 value={choice}
                 onChange={setChoice}
                 options={[
-                  { value: 'light', label: '浅色', icon: <SunIcon size={14} /> },
-                  { value: 'dark', label: '深色', icon: <MoonIcon size={14} /> },
-                  { value: 'system', label: '跟随系统', icon: <MonitorIcon size={14} /> },
+                  { value: 'light', label: t('theme.light'), icon: <SunIcon size={14} /> },
+                  { value: 'dark', label: t('theme.dark'), icon: <MoonIcon size={14} /> },
+                  { value: 'system', label: t('theme.system'), icon: <MonitorIcon size={14} /> },
                 ]}
               />
             </div>
@@ -173,33 +182,33 @@ export function SettingsDrawer({
 
           {/* 环境 */}
           <section className="settings-group">
-            <h4 className="settings-group-title">环境</h4>
+            <h4 className="settings-group-title">{t('settings.envGroup')}</h4>
             <div className="settings-kv">
               <div className="kv">
-                <span className="text-tertiary">默认保存目录</span>
+                <span className="text-tertiary">{t('settings.saveDir')}</span>
                 <span className="mono text-secondary settings-path">
                   <FolderIcon size={13} />
                   {system?.saveDir ?? '--'}
                 </span>
               </div>
               <div className="kv">
-                <span className="text-tertiary">ffmpeg</span>
+                <span className="text-tertiary">{t('settings.ffmpeg')}</span>
                 <span className={`settings-env ${system?.ffmpeg ? 'is-ok' : 'is-warn'}`}>
                   {system?.ffmpeg ? (
                     <>
-                      <CheckIcon size={13} /> 可用（高画质与 MP3 已解锁）
+                      <CheckIcon size={13} /> {t('settings.ffmpegOk')}
                     </>
                   ) : (
                     <>
-                      <AlertIcon size={13} /> 未安装（回退标准画质）
+                      <AlertIcon size={13} /> {t('settings.ffmpegMissing')}
                     </>
                   )}
                 </span>
               </div>
               <div className="kv">
-                <span className="text-tertiary">平台</span>
+                <span className="text-tertiary">{t('settings.platform')}</span>
                 <span className="text-secondary">
-                  {system?.platform === 'darwin' ? 'macOS' : system?.platform === 'windows' ? 'Windows' : system?.platform ?? '--'}
+                  {platformKey ? t(platformKey) : (system?.platform ?? '--')}
                 </span>
               </div>
             </div>
@@ -207,12 +216,12 @@ export function SettingsDrawer({
 
           {/* 关于 */}
           <section className="settings-group">
-            <h4 className="settings-group-title">关于</h4>
+            <h4 className="settings-group-title">{t('settings.aboutGroup')}</h4>
             <div className="settings-about">
               <LogoMark size={34} />
               <div>
-                <div className="settings-about-name">Bilibili 下载器 · 流光</div>
-                <div className="text-tertiary num">版本 {system?.version ?? '--'}</div>
+                <div className="settings-about-name">{t('settings.aboutName')}</div>
+                <div className="text-tertiary num">{t('settings.version', { v: system?.version ?? '--' })}</div>
               </div>
             </div>
           </section>

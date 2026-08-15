@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { AlertIcon, CheckIcon, CloseIcon, InfoIcon } from './icons'
+import { useI18n } from './i18n'
 
 type ToastLevel = 'info' | 'success' | 'error'
 
@@ -26,6 +27,7 @@ let nextID = 1
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([])
   const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>())
+  const { t: tr } = useI18n()
 
   const dismiss = useCallback((id: number) => {
     setItems((cur) => cur.filter((t) => t.id !== id))
@@ -64,7 +66,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               )}
             </span>
             <span className="toast-body">{t.body}</span>
-            <button className="toast-close" onClick={() => dismiss(t.id)} aria-label="关闭提示">
+            <button className="toast-close" onClick={() => dismiss(t.id)} aria-label={tr('toast.close')}>
               <CloseIcon size={14} />
             </button>
           </div>

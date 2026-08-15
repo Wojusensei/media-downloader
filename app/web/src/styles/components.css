@@ -205,12 +205,53 @@
   margin-bottom: 34px;
 }
 
-.hero-title {
-  margin: 0 0 14px;
-  font-size: clamp(34px, 5.4vw, 56px);
-  line-height: 1.16;
+/* 大标题：左右分布，右半渐变 */
+.hero-spread {
+  margin: 0 0 18px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 32px;
+  width: 100%;
+  font-size: clamp(36px, 5.6vw, 64px);
+  line-height: 1.18;
   font-weight: 800;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
+}
+
+.hero-spread-l,
+.hero-spread-r {
+  white-space: nowrap;
+}
+
+.hero-spread-l::after,
+.hero-spread-r::before {
+  /* 左右两端的装饰细线 */
+  content: '';
+  display: inline-block;
+  vertical-align: middle;
+  width: clamp(24px, 6vw, 72px);
+  height: 1px;
+  margin: 0 18px;
+  background: linear-gradient(90deg, transparent, var(--glass-border-strong));
+}
+
+.hero-spread-r::before {
+  background: linear-gradient(90deg, var(--glass-border-strong), transparent);
+}
+
+@media (max-width: 640px) {
+  .hero-spread {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+  }
+
+  .hero-spread-l::after,
+  .hero-spread-r::before {
+    display: none;
+  }
 }
 
 .hero-sub {
@@ -341,15 +382,6 @@
 
 .main-col-wide {
   grid-column: 1 / -1;
-}
-
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 22px 0 30px;
-  font-size: 12.5px;
 }
 
 .dot-sep::before {
@@ -1392,10 +1424,6 @@
 @media (max-width: 560px) {
   .page {
     padding: 0 16px;
-  }
-
-  .hero-title {
-    font-size: 32px;
   }
 
   .account-name {

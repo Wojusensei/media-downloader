@@ -1,6 +1,7 @@
-// 顶栏：品牌、登录态、主题切换、历史与设置入口。
+// 顶栏：品牌、语言、登录态、主题切换、历史与设置入口。
 import { LogoMark, MoonIcon, MonitorIcon, SunIcon, GearIcon, ClockIcon, UserIcon, VipIcon } from '../icons'
 import { useTheme, type ThemeChoice } from '../theme'
+import { useI18n, type Lang } from '../i18n'
 import { SegmentedControl } from './SegmentedControl'
 import type { LoginStatus } from '../api'
 
@@ -16,6 +17,7 @@ export function TopBar({
   historyCount: number
 }) {
   const { choice, setChoice } = useTheme()
+  const { t, lang, setLang } = useI18n()
 
   return (
     <header className="topbar">
@@ -23,37 +25,48 @@ export function TopBar({
         <div className="brand">
           <LogoMark size={30} />
           <div className="brand-text">
-            <span className="brand-name">Bilibili 下载器</span>
-            <span className="brand-tag">流光 · Lightflow</span>
+            <span className="brand-name">{t('brand.name')}</span>
+            <span className="brand-tag">{t('brand.tag')}</span>
           </div>
         </div>
 
         <div className="topbar-actions">
           {login?.loggedIn ? (
-            <button className="account-chip is-logged" onClick={onOpenSettings} title="已登录">
+            <button className="account-chip is-logged" onClick={onOpenSettings} title={t('topbar.loggedIn')}>
               {login.avatar ? (
                 <img className="account-avatar" src={login.avatar} alt="" referrerPolicy="no-referrer" />
               ) : (
                 <UserIcon size={15} />
               )}
-              <span className="account-name">{login.username || '已登录'}</span>
+              <span className="account-name">{login.username || t('topbar.loggedIn')}</span>
               {login.vip && (
-                <span className="account-vip" title="大会员">
+                <span className="account-vip" title={t('topbar.vip')}>
                   <VipIcon size={13} />
-                  大会员
+                  {t('topbar.vip')}
                 </span>
               )}
             </button>
           ) : (
-            <button className="account-chip" onClick={onOpenSettings} title="游客模式，点击前往设置登录">
+            <button className="account-chip" onClick={onOpenSettings} title={t('settings.guestCard')}>
               <UserIcon size={15} />
-              <span className="account-name">游客</span>
+              <span className="account-name">{t('topbar.guest')}</span>
             </button>
           )}
 
+          <SegmentedControl<Lang>
+            size="sm"
+            ariaLabel={t('topbar.lang')}
+            value={lang}
+            onChange={setLang}
+            options={[
+              { value: 'zh', label: '中' },
+              { value: 'en', label: 'EN' },
+            ]}
+          />
+
           <SegmentedControl<ThemeChoice>
             size="sm"
-            ariaLabel="主题模式"
+            ariaLabel={t('topbar.theme')}
             value={choice}
             onChange={setChoice}
             options={[
@@ -66,13 +79,13 @@ export function TopBar({
           <button
             className="icon-button"
             onClick={onOpenHistory}
-            aria-label="下载历史"
-            title="下载历史"
+            aria-label={t('topbar.history')}
+            title={t('topbar.history')}
           >
             <ClockIcon size={18} />
             {historyCount > 0 && <span className="icon-badge num">{historyCount > 99 ? '99+' : historyCount}</span>}
           </button>
-          <button className="icon-button" onClick={onOpenSettings} aria-label="设置" title="设置">
+          <button className="icon-button" onClick={onOpenSettings} aria-label={t('topbar.settings')} title={t('topbar.settings')}>
             <GearIcon size={18} />
           </button>
         </div>
