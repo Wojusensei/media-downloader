@@ -1,5 +1,12 @@
-downloads/
-__pycache__/
-*.pyc
-*.class
+# 构建产物
+app/web/dist/
+dist/
+app/build/out/
+*.exe
+*.dmg
+*.app/
 node_modules/
+*.syso
+*.icns
+*.ico
+.DS_Store
