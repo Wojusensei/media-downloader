@@ -98,10 +98,10 @@ func render(renderSize int) *image.RGBA {
 					screenSD := roundRectSD(p, vec{32, 33.75}, 16.5, 7)
 					whiteA := clamp(2.0 - math.Abs(screenSD)) // 线宽 4
 
-					// 天线两笔
+					// 天线两笔（左右关于 x=32 对称）
 					antenna := math.Min(
 						segDist(p, vec{21, 14.5}, vec{27.5, 22}),
-						segDist(p, vec{36.5, 14.5}, vec{30, 22}),
+						segDist(p, vec{43, 14.5}, vec{36.5, 22}),
 					)
 					whiteA = math.Max(whiteA, clamp(2.2-antenna))
 
@@ -252,6 +252,7 @@ func buildICO(sizes []int, pngs map[int][]byte) ([]byte, error) {
 
 func main() {
 	outDir := flag.String("out", "build/icons", "输出目录")
+	preview := flag.Bool("preview", false, "额外生成 preview.png（深浅双底多尺寸预览，用于审阅）")
 	flag.Parse()
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
 		fatal(err)
@@ -313,6 +314,51 @@ func main() {
 	}
 
 	fmt.Printf("图标已生成到 %s：AppIcon.icns / AppIcon.ico / PNG x%d\n", *outDir, len(icnsSizes)+2)
+
+	if *preview {
+		if err := writePreview(filepath.Join(*outDir, "preview.png"), imgs[256], imgs[64], imgs[32], imgs[16]); err != nil {
+			fatal(err)
+		}
+		fmt.Println("预览图：", filepath.Join(*outDir, "preview.png"))
+	}
+}
+
+// writePreview 生成审阅用预览：左深底右浅底，大图 + 小尺寸一排。
+func writePreview(path string, big, s64, s32, s16 *image.RGBA) error {
+	const W, H = 1200, 640
+	img := image.NewRGBA(image.Rect(0, 0, W, H))
+	// 左深右浅
+	dark := color.RGBA{R: 11, G: 13, B: 22, A: 255}
+	light := color.RGBA{R: 245, G: 246, B: 251, A: 255}
+	for x := 0; x < W; x++ {
+		for y := 0; y < H; y++ {
+			if x < W/2 {
+				img.SetRGBA(x, y, dark)
+			} else {
+				img.SetRGBA(x, y, light)
+			}
+		}
+	}
+	// 大图标（256）居中
+	drawIcon(img, big, W/4-128, H/2-128)
+	drawIcon(img, big, W*3/4-128, H/2-128)
+	// 小尺寸一排（浅色侧底部）
+	x := W/2 + 60
+	for _, s := range []*image.RGBA{s64, s32, s16} {
+		drawIcon(img, s, x, H-140)
+		x += s.Bounds().Dx() + 40
+	}
+	return savePNG(path, img)
+}
+
+func drawIcon(dst *image.RGBA, icon *image.RGBA, x, y int) {
+	for dy := 0; dy < icon.Bounds().Dy(); dy++ {
+		for dx := 0; dx < icon.Bounds().Dx(); dx++ {
+			if c := icon.RGBAAt(dx, dy); c.A > 0 {
+				dst.SetRGBA(x+dx, y+dy, c)
+			}
+		}
+	}
 }
 
 func fatal(err error) {

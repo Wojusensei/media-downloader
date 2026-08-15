@@ -29,7 +29,7 @@ export function LogoMark({ size = 26, ...rest }: IconProps) {
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="15" fill="url(#logo-g)" />
-      <path d="M21 14.5l6.5 7.5m9-7.5L30 22" stroke="#fff" strokeWidth="4.4" strokeLinecap="round" fill="none" />
+      <path d="M21 14.5l6.5 7.5m15.5-7.5L36.5 22" stroke="#fff" strokeWidth="4.4" strokeLinecap="round" fill="none" />
       <rect x="15.5" y="22" width="33" height="23.5" rx="7" fill="none" stroke="#fff" strokeWidth="4" />
       <path d="M32 27.5v7m0 0l-4-4m4 4l4-4" stroke="#fff" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
