@@ -113,16 +113,16 @@ app/
 ## 常见问题
 
 **Q：下载的视频最高只有 480P？**
-游客模式只能拿到有限清晰度。在设置中导入浏览器登录态（需该浏览器已登录 B 站）即可解锁 1080P；大会员可解锁 1080P+ / 4K 等。
+- A：游客模式只能拿到有限清晰度。在设置中导入浏览器登录态（需该浏览器已登录 B 站）即可解锁 1080P；大会员可解锁 1080P+ / 4K 等。
 
 **Q：为什么需要 ffmpeg？**
-B 站高画质视频的音频和视频是分离的 DASH 流，需要 ffmpeg 无损合并；MP3 转码也依赖它。不安装也能用，只是画质回退。
+- A：B 站高画质视频的音频和视频是分离的 DASH 流，需要 ffmpeg 无损合并；MP3 转码也依赖它。不安装也能用，只是画质回退。
 
 **Q：Cookie 安全吗？**
-Cookie 只保存在本机的用户配置目录（`~/Library/Application Support/media-downloader` 或 `%APPDATA%\media-downloader`），仅用于向 B 站 API 发起请求，不会发往任何第三方。
+- A：Cookie 只保存在本机的用户配置目录（`~/Library/Application Support/media-downloader` 或 `%APPDATA%\media-downloader`），仅用于向 B 站 API 发起请求，不会发往任何第三方。
 
 **Q：多语言目录（c / cpp / go / java / javascript / python）是什么？**
-这是仓库最初的形态：用六种语言实现同一个命令行下载器，作为学习对照。图形界面应用（v4.0 起）与它们相互独立。
+- A：这是仓库最初的形态：用六种语言实现同一个命令行下载器，作为学习对照。图形界面应用（v4.0 起）与它们相互独立。
 
 ## 说明
 
