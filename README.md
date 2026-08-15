@@ -131,4 +131,6 @@ Cookie 只保存在本机的用户配置目录（`~/Library/Application Support/
 
 ## 许可
 
-MIT License
+本项目采用 [MIT License](LICENSE) 开源。
+
+应用构建与分发中链接的第三方库及其许可证，见[第三方依赖声明](THIRD_PARTY.md)。
