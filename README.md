@@ -24,7 +24,7 @@
 
 流光（Lightflow）是本仓库的图形界面应用：双击启动后自动打开浏览器界面，粘贴 B 站链接即可下载视频、音频或封面图。所有数据只在本机处理，不上传任何信息。
 
-本仓库同时收录同一个下载器的多语言实现（C / C++ / Go / Java / JavaScript / Python），作为各语言的对照参考；正式的图形界面应用位于 [`app/`](app/) 目录。
+本仓库同时收录同一个下载器的多语言实现（C / C++ / Go / Java / JavaScript / Python），作为各语言的对照参考；或者说，这是本仓库一开始的残余内容，不必在意。正式的图形界面应用位于 [`app/`](app/) 目录。
 
 ![应用界面](docs/images/screenshot-main.png)
 
@@ -45,7 +45,7 @@
 
 ## 下载安装
 
-在 [Releases](https://github.com/Wojusensei/media-downloader/releases) 页面按系统选择：
+在 [Releases](https://github.com/Wojusensei/media-downloader/releases) 页面按系统选择：(x.x.x是因为懒得每次都改版本号)
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
