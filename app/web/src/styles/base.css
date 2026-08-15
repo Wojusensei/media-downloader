@@ -1,0 +1,240 @@
+/* ============================================================
+   基础样式：重置、背景画布、通用工具类
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color 0.45s var(--ease-out), color 0.45s var(--ease-out);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+::selection {
+  background: rgba(251, 114, 153, 0.35);
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ---------------- 背景画布：极光 + 网格 ---------------- */
+
+.canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: var(--aurora-opacity);
+  transition: opacity 0.6s var(--ease-out);
+}
+
+.canvas::after {
+  /* 细网格，给玻璃卡片提供质感参照 */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
+}
+
+.aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+
+.aurora-1 {
+  width: 640px;
+  height: 640px;
+  left: -180px;
+  top: -220px;
+  background: var(--bg-canvas-1);
+  animation: drift-1 26s ease-in-out infinite alternate;
+}
+
+.aurora-2 {
+  width: 560px;
+  height: 560px;
+  right: -160px;
+  top: -160px;
+  background: var(--bg-canvas-2);
+  animation: drift-2 32s ease-in-out infinite alternate;
+}
+
+.aurora-3 {
+  width: 720px;
+  height: 520px;
+  left: 28%;
+  top: 46%;
+  background: var(--bg-canvas-3);
+  animation: drift-3 38s ease-in-out infinite alternate;
+}
+
+@keyframes drift-1 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(120px, 90px, 0) scale(1.15); }
+}
+@keyframes drift-2 {
+  from { transform: translate3d(0, 0, 0) scale(1.1); }
+  to { transform: translate3d(-140px, 70px, 0) scale(0.95); }
+}
+@keyframes drift-3 {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to { transform: translate3d(-90px, -70px, 0) rotate(12deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora {
+    animation: none;
+  }
+}
+
+/* ---------------- 工具类 ---------------- */
+
+.page {
+  width: 100%;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 玻璃卡片顶部的高光描边 */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 4%, var(--glass-highlight) 30%, var(--glass-border-strong) 50%, var(--glass-highlight) 70%, transparent 96%);
+  pointer-events: none;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+/* 渐变文字 */
+.gradient-text {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 入场动画 */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in {
+  animation: rise-in 0.6s var(--ease-out) both;
+}
+
+.rise-in-delay-1 { animation-delay: 80ms; }
+.rise-in-delay-2 { animation-delay: 160ms; }
+.rise-in-delay-3 { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+}
+
+/* 焦点可达性 */
+:focus-visible {
+  outline: 2px solid var(--chip-border-active);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
