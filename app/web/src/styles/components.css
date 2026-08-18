@@ -366,7 +366,7 @@
 
 .main-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: 22px;
   align-items: start;
   margin-top: 18px;
@@ -392,7 +392,7 @@
 
 .video-card {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: minmax(300px, 46%) minmax(0, 1fr);
   gap: 0;
 }
 
@@ -401,6 +401,7 @@
   overflow: hidden;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
   min-height: 200px;
+  background: var(--chip-bg);
 }
 
 .video-card-cover img {
@@ -567,6 +568,7 @@
   align-items: center;
   gap: 8px;
   max-width: 100%;
+  min-width: 0;
   padding: 8px 14px;
   border-radius: var(--radius-sm);
   background: var(--input-bg);
@@ -584,6 +586,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .video-card-actions {
@@ -1386,21 +1389,20 @@
 
 /* ---------------- 响应式 ---------------- */
 
-@media (max-width: 920px) {
-  .main-grid {
-    grid-template-columns: 1fr;
-  }
-
+/* 窄窗口：预览卡片改为封面整行在上，正文完整显示，下载队列保持右侧 */
+@media (max-width: 1140px) {
   .video-card {
     grid-template-columns: 1fr;
   }
 
   .video-card-cover {
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    aspect-ratio: 16 / 9;
-    min-height: 0;
+    min-height: 250px;
+    max-height: 340px;
   }
+}
 
+@media (max-width: 920px) {
   .option-row {
     flex-direction: column;
     gap: 8px;
@@ -1418,6 +1420,19 @@
 
   .brand-tag {
     display: none;
+  }
+}
+
+/* 极窄窗口：主网格单列，队列移至预览下方 */
+@media (max-width: 760px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .video-card-cover {
+    aspect-ratio: 16 / 9;
+    min-height: 0;
+    max-height: none;
   }
 }
 
