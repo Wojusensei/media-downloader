@@ -45,7 +45,7 @@
 
 ## 下载安装
 
-在 [Releases](https://github.com/Wojusensei/media-downloader/releases) 页面按系统选择：(x.x.x是因为懒得每次都改版本号)
+在 [Releases](https://github.com/Wojusensei/media-downloader/releases) 页面按系统选择：(下方的x.x.x是因为懒得每次都改md里的版本号)
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
