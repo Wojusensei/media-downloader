@@ -4,7 +4,7 @@
   <img src="docs/images/app-icon.png" width="96" alt="应用图标" />
 </p>
 
-<h3 align="center">Bilibili 下载器 · 流光</h3>
+<h3 align="center">Bilibili 下载器</h3>
 
 <p align="center">
   一个本地运行的 B 站视频 / 音频 / 封面资源下载器。<br/>
