@@ -5,6 +5,7 @@
 *.html linguist-language=HTML
 *.java linguist-language=Java
 *.go linguist-language=Go
+*.rs linguist-language=Rust
 *.cs linguist-language=C#
 *.css linguist-language=CSS
 *.md linguist-language=Markdown
