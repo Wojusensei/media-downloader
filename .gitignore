@@ -10,3 +10,9 @@ node_modules/
 *.icns
 *.ico
 .DS_Store
+
+# 多语言示例的运行产物
+/downloads/
+
+# Rust
+rust/target/

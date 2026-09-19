@@ -24,7 +24,7 @@
 
 流光（Lightflow）是本仓库的图形界面应用：双击启动后自动打开浏览器界面，粘贴 B 站链接即可下载视频、音频或封面图。所有数据只在本机处理，不上传任何信息。
 
-本仓库同时收录同一个下载器的多语言实现（C / C++ / Go / Java / JavaScript / Python），作为各语言的对照参考；或者说，这是本仓库一开始的残余内容，不必在意。正式的图形界面应用位于 [`app/`](app/) 目录，在本地从源码编译时可以删除这些内容。
+本仓库同时收录同一个下载器的多语言实现（C / C++ / Go / Java / JavaScript / Python / Rust），作为各语言的对照参考；或者说，这是本仓库一开始的残余内容，不必在意。正式的图形界面应用位于 [`app/`](app/) 目录，在本地从源码编译时可以删除这些内容。
 
 ![应用界面](docs/images/screenshot-main.png)
 
@@ -121,8 +121,8 @@ app/
 **Q：Cookie 安全吗？**
 - A：Cookie 只保存在本机的用户配置目录（`~/Library/Application Support/media-downloader` 或 `%APPDATA%\media-downloader`），仅用于向 B 站 API 发起请求，不会发往任何第三方。
 
-**Q：多语言目录（c / cpp / go / java / javascript / python）是什么？**
-- A：这是仓库最初的形态：用六种语言实现同一个命令行下载器，作为学习对照。图形界面应用（v4.0 起）与它们相互独立。
+**Q：多语言目录（c / cpp / go / java / javascript / python / rust）是什么？**
+- A：这是仓库最初的形态：用七种语言实现同一个命令行下载器，作为学习对照。图形界面应用（v4.0 起）与它们相互独立。
 
 ## 说明
 
