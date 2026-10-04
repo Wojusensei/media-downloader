@@ -108,7 +108,7 @@ def download_file(url, file_path, file_type):
     return file_path
 
 def merge_video_audio(video_path, audio_path, output_path):
-    """用 ffmpeg 合并视频和音频（如果电脑有 ffmpeg 的话）~~"""
+    """用 ffmpeg 合并视频和音频（如果电脑有 ffmpeg 的话）~~ 合并成功返回 True"""
     try:
         print("[合并] 正在合并视频和音频... awa")
         cmd = [
@@ -118,22 +118,22 @@ def merge_video_audio(video_path, audio_path, output_path):
         ]
         subprocess.run(cmd, check=True, capture_output=True)
         print(f"[完成] 合并成功！已保存到: {output_path} DA☆ZE")
-        
+
         # 删除临时文件 qwq
         os.remove(video_path)
         os.remove(audio_path)
         print("[清理] 已删除临时文件 awa")
-        
-        return output_path
+
+        return True
     except FileNotFoundError:
         print("[提示] 未检测到 ffmpeg，视频和音频将分开保存 qwq")
         print(f"       视频文件: {video_path}")
         print(f"       音频文件: {audio_path}")
-        return video_path
+        return False
     except Exception as e:
         print(f"[警告] 合并失败: {e} ")
         print(f"       视频和音频已分开保存 ")
-        return video_path
+        return False
 
 # ==================== 主程序 ====================
 def main():
@@ -188,20 +188,22 @@ def main():
         audio_path = os.path.join(folder, "audio_only.mp3")
         download_file(audio_url, audio_path, "音频流")
         
-        # 尝试合并
-        final_path = os.path.join(folder, f"{title}.mp4")
-        final_path = re.sub(r'[\\/:*?"<>|]', '_', final_path)
-        merge_video_audio(video_path, audio_path, final_path)
-        
+        # 尝试合并（只清洗标题里的非法字符，别把整个路径都洗了 qwq）
+        safe_title = re.sub(r'[\\/:*?"<>|]', '_', title)
+        final_path = os.path.join(folder, f"{safe_title}.mp4")
+        merged = merge_video_audio(video_path, audio_path, final_path)
+
         print()
         print("=" * 55)
         print("    🎉 全部下载完成！DA☆ZE")
         print(f"    📁 文件夹: {folder}")
         print("    📦 包含文件:")
         print(f"       - cover.jpg (封面) awa")
-        print(f"       - video_only.mp4 (纯视频) qwq")
-        print(f"       - audio_only.mp3 (纯音频) DA☆ZE")
-        print(f"       - {os.path.basename(final_path)} (合并版) awa")
+        if merged:
+            print(f"       - {os.path.basename(final_path)} (合并版) awa")
+        else:
+            print(f"       - video_only.mp4 (纯视频) qwq")
+            print(f"       - audio_only.mp3 (纯音频) DA☆ZE")
         print("=" * 55)
         
     except Exception as e:

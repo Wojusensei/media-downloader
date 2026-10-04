@@ -11,6 +11,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,7 +44,7 @@ type BiliPlayUrl struct {
 				BaseUrl string `json:"baseUrl"`
 			} `json:"video"`
 			Audio []struct {
-				BaseUrl string `json:"audioUrl"`
+				BaseUrl string `json:"baseUrl"`
 			} `json:"audio"`
 		} `json:"dash"`
 	} `json:"data"`
@@ -68,10 +69,11 @@ func main() {
 	// 确保下载根目录存在 捏
 	os.MkdirAll(downloadRoot, 0755)
 
-	// 用户输入地址 呐呐
+	// 用户输入地址 呐呐（读整行，链接里有空格也不会被截断 awa）
 	fmt.Print("请输入B站视频链接: ")
-	var url string
-	fmt.Scanln(&url)
+	reader := bufio.NewReader(os.Stdin)
+	url, _ := reader.ReadString('\n')
+	url = strings.TrimSpace(url)
 	fmt.Println()
 
 	// 步骤1: 提取BV号 DA☆ZE
