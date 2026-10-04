@@ -43,7 +43,7 @@ type BiliPlayUrl struct {
 				BaseUrl string `json:"baseUrl"`
 			} `json:"video"`
 			Audio []struct {
-				BaseUrl string `json:"audioUrl"`
+				BaseUrl string `json:"baseUrl"`
 			} `json:"audio"`
 		} `json:"dash"`
 	} `json:"data"`
