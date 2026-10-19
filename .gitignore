@@ -5,6 +5,7 @@ app/build/out/
 *.exe
 *.dmg
 *.app/
+*.jar
 node_modules/
 *.syso
 *.icns
