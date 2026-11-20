@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -20,12 +21,12 @@ import (
 
 // 任务状态。
 const (
-	StateResolving  = "resolving"
+	StateResolving   = "resolving"
 	StateDownloading = "downloading"
-	StateMerging    = "merging"
-	StateDone       = "done"
-	StateError      = "error"
-	StateCanceled   = "canceled"
+	StateMerging     = "merging"
+	StateDone        = "done"
+	StateError       = "error"
+	StateCanceled    = "canceled"
 )
 
 // Task 是一个下载任务的全部状态。
@@ -57,10 +58,10 @@ type Task struct {
 
 // Event 是推送给前端的事件。
 type Event struct {
-	Type   string      `json:"type"` // task | toast
-	Task   *Task       `json:"task,omitempty"`
-	Level  string      `json:"level,omitempty"`
-	Body   string      `json:"body,omitempty"`
+	Type  string `json:"type"` // task | toast
+	Task  *Task  `json:"task,omitempty"`
+	Level string `json:"level,omitempty"`
+	Body  string `json:"body,omitempty"`
 }
 
 // Subscriber 收到事件即转发（SSE）。
@@ -101,16 +102,18 @@ type HistorySink interface {
 // NewManager 创建任务管理器。ffmpegPath 为空表示 ffmpeg 不可用。
 func NewManager(client *bilibili.Client, ffmpegPath string, history HistorySink) *Manager {
 	return &Manager{
-		client: client,
-		ffmpeg: ffmpegPath,
+		client:  client,
+		ffmpeg:  ffmpegPath,
 		history: history,
 		dlClient: &http.Client{
-			Timeout: 0, // 下载大文件不设总超时，由传输层控制
+			Timeout: 0, // 下载大文件不设总超时，由传输层与读超时看门狗控制
 			Transport: &http.Transport{
-				MaxIdleConns:        8,
-				MaxConnsPerHost:     4,
-				IdleConnTimeout:     60 * time.Second,
-				TLSHandshakeTimeout: 10 * time.Second,
+				DialContext:           (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+				ResponseHeaderTimeout: 30 * time.Second,
+				MaxIdleConns:          8,
+				MaxConnsPerHost:       4,
+				IdleConnTimeout:       60 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
 			},
 		},
 		sema: make(chan struct{}, 2), // 最多同时 2 个任务

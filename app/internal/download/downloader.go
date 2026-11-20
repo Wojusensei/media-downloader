@@ -59,8 +59,23 @@ func fetchOne(ctx context.Context, client *http.Client, u, path string, headers 
 	return lastErr
 }
 
+// stallTimeout 是读超时看门狗：连接上这么久没有任何数据进展，就判定连接被
+// 静默掐断（代理/防火墙丢包不回 RST 的场景），主动取消让它走重试而不是永久挂死。
+var stallTimeout = 30 * time.Second
+
 func fetchOnce(ctx context.Context, client *http.Client, u, path string, headers http.Header, progress func(received, total int64)) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	err := doFetchOnce(ctx, client, u, path, headers, progress)
+	// 外部没有取消却收到 canceled，说明是看门狗掐断了僵死连接。
+	if err != nil && ctx.Err() == nil && errors.Is(err, context.Canceled) {
+		return fmt.Errorf("连接僵死（%s 无数据进展）", stallTimeout)
+	}
+	return err
+}
+
+func doFetchOnce(ctx context.Context, client *http.Client, u, path string, headers http.Header, progress func(received, total int64)) error {
+	rctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	req, err := http.NewRequestWithContext(rctx, http.MethodGet, u, nil)
 	if err != nil {
 		return err
 	}
@@ -82,12 +97,16 @@ func fetchOnce(ctx context.Context, client *http.Client, u, path string, headers
 		return err
 	}
 
+	watchdog := time.AfterFunc(stallTimeout, cancel) // 静默僵死时止损
+	defer watchdog.Stop()
+
 	var received int64
 	buf := make([]byte, 256*1024)
 	var lastTick time.Time
 	for {
 		n, rerr := resp.Body.Read(buf)
 		if n > 0 {
+			watchdog.Reset(stallTimeout)
 			if _, werr := f.Write(buf[:n]); werr != nil {
 				f.Close()
 				os.Remove(partPath)
@@ -117,7 +136,7 @@ func fetchOnce(ctx context.Context, client *http.Client, u, path string, headers
 			os.Remove(partPath)
 			return rerr
 		}
-		if ctx.Err() != nil {
+		if rctx.Err() != nil && ctx.Err() != nil {
 			f.Close()
 			os.Remove(partPath)
 			return ctx.Err()
