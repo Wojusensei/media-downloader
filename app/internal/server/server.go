@@ -25,7 +25,7 @@ import (
 )
 
 // Version 是应用版本号。
-const Version = "4.0.0"
+const Version = "4.0.2"
 
 // Options 聚合服务端依赖。
 type Options struct {
