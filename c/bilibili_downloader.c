@@ -9,7 +9,7 @@
 #pragma comment(lib, "shell32.lib")
 
 #define BUF (64*1024)
-#define ROOT L"D:\\桌面\\media-downloader\\downloads"
+#define ROOT L"downloads"
 
 void wprint(const wchar_t* s) {
     DWORD n; WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), s, wcslen(s), &n, NULL);
@@ -55,6 +55,11 @@ char* http_get(const char* url) {
         char loc8[4096]; WideCharToMultiByte(CP_UTF8,0,loc,-1,loc8,4096,NULL,NULL);
         return http_get(loc8);
     }
+    if (st!=200) {
+        /* 状态码不对就别把错误页当响应读了 qwq */
+        WinHttpCloseHandle(r); WinHttpCloseHandle(c); WinHttpCloseHandle(s);
+        return NULL;
+    }
     DWORD t=0,rd=0;
     char* bf = malloc(1024*1024);
     while (WinHttpReadData(r, bf+t, 1024*1024-t-1, &rd) && rd>0) { t+=rd; if(t>=1024*1024-1) break; }
@@ -96,6 +101,13 @@ int download_file(const char* url, const wchar_t* folder, const wchar_t* filenam
         char loc8[4096]; WideCharToMultiByte(CP_UTF8,0,loc,-1,loc8,4096,NULL,NULL);
         int ret = download_file(loc8, folder, filename, label); free(loc8);
         return ret;
+    }
+    if (st!=200) {
+        /* 状态码不是 200 就别把错误页当文件存了 呐呐 */
+        wprint(L"[ERROR] HTTP status: ");
+        wchar_t sc[16]; swprintf(sc, 16, L"%lu", st); wprintln(sc);
+        WinHttpCloseHandle(r); WinHttpCloseHandle(c); WinHttpCloseHandle(s); free(wurl);
+        return 0;
     }
     DWORD cl=0,clz=sizeof(cl);
     WinHttpQueryHeaders(r, WINHTTP_QUERY_CONTENT_LENGTH|WINHTTP_QUERY_FLAG_NUMBER, NULL, &cl,&clz,NULL);

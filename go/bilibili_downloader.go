@@ -197,6 +197,11 @@ func httpGet(url string) []byte {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("[错误] HTTP 状态码: %d qwq\n", resp.StatusCode)
+		os.Exit(1)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("[错误] 读取响应失败: %s qwq\n", err)
@@ -228,6 +233,12 @@ func downloadFile(url, filePath, fileType string) {
 		return
 	}
 	defer resp.Body.Close()
+
+	// 状态码不是 200 就别把错误页当文件存了 呐呐
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("\n[错误] 下载失败: HTTP %d qwq\n", resp.StatusCode)
+		return
+	}
 
 	file, err := os.Create(filePath)
 	if err != nil {

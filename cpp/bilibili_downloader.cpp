@@ -8,7 +8,7 @@
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "shell32.lib")
 
-#define ROOT L"D:\\桌面\\media-downloader\\downloads"
+#define ROOT L"downloads"
 
 void wprint(const std::wstring& s) {
     DWORD n;
@@ -68,6 +68,11 @@ std::string http_get(const std::string& url) {
         WinHttpCloseHandle(hR); WinHttpCloseHandle(hC); WinHttpCloseHandle(hS);
         return http_get(to_mb(loc));
     }
+    // 状态码不对就别把错误页当响应读了 一w一
+    if (st != 200) {
+        WinHttpCloseHandle(hR); WinHttpCloseHandle(hC); WinHttpCloseHandle(hS);
+        return "";
+    }
     std::string body;
     char buf[65536]; DWORD rd;
     while (WinHttpReadData(hR, buf, sizeof(buf)-1, &rd) && rd > 0) body.append(buf, rd);
@@ -107,6 +112,12 @@ bool download(const std::string& url, const std::wstring& dir, const std::wstrin
         WinHttpQueryHeaders(hR, WINHTTP_QUERY_LOCATION, NULL, loc, &ls, NULL);
         WinHttpCloseHandle(hR); WinHttpCloseHandle(hC); WinHttpCloseHandle(hS);
         return download(to_mb(loc), dir, fname, label);
+    }
+    // 状态码不是 200 就别把错误页当文件存了 呐呐
+    if (st != 200) {
+        WinHttpCloseHandle(hR); WinHttpCloseHandle(hC); WinHttpCloseHandle(hS);
+        wprintln(L"  [" + label + L"] HTTP 状态码异常: " + std::to_wstring(st) + L" qwq");
+        return false;
     }
     DWORD cl = 0, clz = sizeof(cl);
     WinHttpQueryHeaders(hR, WINHTTP_QUERY_CONTENT_LENGTH | WINHTTP_QUERY_FLAG_NUMBER, NULL, &cl, &clz, NULL);

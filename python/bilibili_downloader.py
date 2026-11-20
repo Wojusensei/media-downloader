@@ -47,6 +47,7 @@ def get_video_info(bv):
     """通过B站API获取视频标题、cid和封面地址~~"""
     api_url = f"https://api.bilibili.com/x/web-interface/view?bvid={bv}"
     resp = requests.get(api_url, headers=HEADERS)
+    resp.raise_for_status()  # 状态码不对就别解析错误页了 qwq
     data = resp.json()
     
     if data["code"] != 0:
@@ -68,6 +69,7 @@ def get_download_urls(bv, cid):
         "fnval": 16,     # 16=获取DASH流（视频和音频分离）
     }
     resp = requests.get(api_url, params=params, headers=HEADERS)
+    resp.raise_for_status()  # 状态码不对就别解析错误页了 qwq
     data = resp.json()
     
     if data["code"] != 0:
@@ -89,6 +91,7 @@ def download_file(url, file_path, file_type):
     print(f"[下载] {file_type} 文件中... awa")
     
     resp = requests.get(url, headers=HEADERS, stream=True)
+    resp.raise_for_status()  # 状态码不是 200 就别把错误页当文件存了 呐呐
     total_size = int(resp.headers.get('content-length', 0))
     downloaded = 0
     

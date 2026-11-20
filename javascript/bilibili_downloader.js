@@ -81,7 +81,14 @@ function httpGetJSON(url, extraHeaders = {}) {
                 resolve(httpGetJSON(res.headers.location, extraHeaders));
                 return;
             }
-            
+
+            // 状态码不对就别把错误页当 JSON 解析了 qwq
+            if (res.statusCode !== 200) {
+                res.resume();
+                reject(new Error(`HTTP ${res.statusCode} qwq`));
+                return;
+            }
+
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
@@ -161,7 +168,14 @@ function downloadFile(url, filePath, fileType) {
                 resolve(downloadFile(res.headers.location, filePath, fileType));
                 return;
             }
-            
+
+            // 状态码不是 200 就别把错误页当文件存了 呐呐
+            if (res.statusCode !== 200) {
+                res.resume();
+                reject(new Error(`下载失败: HTTP ${res.statusCode} qwq`));
+                return;
+            }
+
             const totalSize = parseInt(res.headers['content-length'] || '0');
             let downloaded = 0;
             const file = fs.createWriteStream(filePath);

@@ -55,6 +55,12 @@ public class BilibiliDownloader {
             }
         }
 
+        // 状态码不对就别把错误页当响应读了 一w一
+        if (status != 200) {
+            conn.disconnect();
+            throw new RuntimeException("HTTP " + status + " qwq");
+        }
+
         BufferedReader reader = new BufferedReader(
             new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)
         );
@@ -147,8 +153,15 @@ public class BilibiliDownloader {
             conn.disconnect();
             if (location != null) {
                 downloadFile(location, filePath, fileType);
+                return;
             }
-            return;
+            throw new RuntimeException("重定向缺少地址 qwq");
+        }
+
+        // 状态码不是 200 就别把错误页当文件存了 一w一
+        if (status != 200) {
+            conn.disconnect();
+            throw new RuntimeException("下载失败: HTTP " + status + " qwq");
         }
 
         long totalSize = conn.getContentLengthLong();
